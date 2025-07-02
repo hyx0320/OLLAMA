@@ -1,2 +1,0 @@
-# OLLAMA
-调用AI的API网页
