@@ -7,6 +7,7 @@ class ChatApp {
         this.bindEvents();
         this.loadSettings();
         this.loadConversations();
+        this.updateAvailableModels(); // 初始化可用模型选项
     }
 
     // 初始化DOM元素
@@ -25,6 +26,7 @@ class ChatApp {
         this.ollamaUrlInput = document.getElementById('ollama-url');
         this.clearSettingsBtn = document.getElementById('clear-settings-btn');
         this.modelSelect = document.getElementById('model-select');
+        this.availableModelSelect = document.getElementById('available-model-select'); // 新增
         
         // 功能按钮
         this.saveChatBtn = document.getElementById('save-chat-btn');
@@ -58,6 +60,7 @@ class ChatApp {
         this.modelSelect.addEventListener('change', (e) => {
             this.apiManager.setModel(e.target.value);
             this.saveSettings();
+            this.updateAvailableModels(); // 更新可用模型选项
         });
 
         // 配置管理
@@ -127,16 +130,16 @@ class ChatApp {
             }).catch((error) => {
                 console.error('复制失败:', error);
             });
-    });
+        });
 
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(messageContent);
-    messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
-    this.chatMessages.appendChild(messageDiv);
-    this.scrollToBottom();
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(messageContent);
+        messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
 
-    return messageId;
-}
+        return messageId;
+    }
 
     // 更新消息内容
     updateMessage(messageId, content) {
@@ -315,6 +318,7 @@ class ChatApp {
             this.apiManager.setApiUrl(settings.apiUrl || '');
             this.apiManager.setOllamaUrl(settings.ollamaUrl || 'http://localhost:11434');
             this.apiManager.setModel(settings.currentModel || 'qwen');
+            this.updateAvailableModels(); // 更新可用模型选项
         } catch (error) {
             console.error('加载配置失败:', error);
         }
@@ -357,6 +361,20 @@ class ChatApp {
         if (this.currentConversationId === id) {
             this.createNewChat();
         }
+    }
+
+    // 更新可用模型选项
+    updateAvailableModels() {
+        const selectedAPI = this.modelSelect.value;
+        const availableModels = this.apiManager.getAvailableModelsForAPI(selectedAPI);
+        this.availableModelSelect.innerHTML = '';
+
+        availableModels.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            this.availableModelSelect.appendChild(option);
+        });
     }
 }
 

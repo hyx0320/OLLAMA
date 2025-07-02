@@ -4,6 +4,12 @@ class APIManager {
         this.apiKey = '';
         this.apiUrl = '';
         this.ollamaUrl = 'http://localhost:11434';
+        this.availableModels = {
+            qwen: ['qwen3-235b-a22b', '123'],
+            deepseek: ['deepseek-chat'],
+            kimi: ['moonshot-v1-8k'],
+            ollama: ['deepseek-r1:14b']
+        };
     }
 
     // 设置模型
@@ -55,10 +61,10 @@ class APIManager {
                 'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
-                model: 'qwen3-235b-a22b',
+                model: this.getAvailableModel('qwen'),
                 messages: [{ role: 'user', content: message }],
                 enable_thinking: false, // 需确保此处为false
-                max_tokens: 1000,
+                max_tokens: 5000,
                 temperature: 0.7
             })
         });
@@ -88,9 +94,9 @@ class APIManager {
                 'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
+                model: this.getAvailableModel('deepseek'),
                 messages: [{ role: 'user', content: message }],
-                max_tokens: 1000,
+                max_tokens: 5000,
                 temperature: 0.7
             })
         });
@@ -116,9 +122,9 @@ class APIManager {
                 'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
-                model: 'moonshot-v1-8k',
+                model: this.getAvailableModel('kimi'),
                 messages: [{ role: 'user', content: message }],
-                max_tokens: 1000,
+                max_tokens: 5000,
                 temperature: 0.7
             })
         });
@@ -140,7 +146,7 @@ class APIManager {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'deepseek-r1:14b', // 根据实际安装情况修改
+                    model: this.getAvailableModel('ollama'),
                     messages: [{ role: 'user', content: message }],
                     stream: false
                 })
@@ -153,5 +159,15 @@ class APIManager {
         } catch (error) {
             throw new Error(`Ollama连接失败: ${error.message}，请检查服务是否启动`);
         }
+    }
+
+    // 获取可用模型
+    getAvailableModel(api) {
+        return this.availableModels[api][0]; // 目前只返回第一个模型，可根据需求扩展
+    }
+
+    // 获取指定 API 的可用模型列表
+    getAvailableModelsForAPI(api) {
+        return this.availableModels[api] || [];
     }
 }
