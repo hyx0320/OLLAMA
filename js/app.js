@@ -96,6 +96,11 @@ class ChatApp {
         const loadingId = this.addMessage('assistant', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
 
         try {
+            // 获取用户选择的具体模型
+            const selectedModel = this.availableModelSelect.value;
+            this.apiManager.setModel(this.modelSelect.value); // 设置 API 类型
+            this.apiManager.getAvailableModel = () => selectedModel; // 临时覆盖 getAvailableModel 方法，确保使用选择的模型
+            // 修改此处，使用添加Markdown提示后的消息
             const response = await this.apiManager.sendMessage(message);
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
@@ -104,22 +109,51 @@ class ChatApp {
         }
     }
 
+
+
     // 添加消息到界面
     addMessage(role, content, isLoading = false) {
         const messageId = `msg_${++this.messageIdCounter}`;
+        const messageDiv = this.createMessageDiv(role, messageId);
+        const avatar = this.createAvatar(role);
+        const messageContent = this.createMessageContent(content);
+        const copyButton = this.createCopyButton(messageContent);
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(messageContent);
+        messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+
+        return messageId;
+    }
+
+    // 创建消息元素
+    createMessageDiv(role, messageId) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}-message`;
         messageDiv.id = messageId;
+        return messageDiv;
+    }
 
+    // 创建头像元素
+    createAvatar(role) {
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
         avatar.textContent = role === 'user' ? '👤' : '🤖';
+        return avatar;
+    }
 
+    // 创建消息内容元素
+    createMessageContent(content) {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         messageContent.innerHTML = content;
+        return messageContent;
+    }
 
-        // 添加复制按钮
+    // 创建复制按钮
+    createCopyButton(messageContent) {
         const copyButton = document.createElement('button');
         copyButton.className = 'copy-button';
         copyButton.textContent = '复制';
@@ -131,25 +165,26 @@ class ChatApp {
                 console.error('复制失败:', error);
             });
         });
-
-        messageDiv.appendChild(avatar);
-        messageDiv.appendChild(messageContent);
-        messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-
-        return messageId;
+        return copyButton;
     }
 
-    // 更新消息内容
+    // 修改updateMessage方法，添加格式验证
     updateMessage(messageId, content) {
         const messageDiv = document.getElementById(messageId);
         if (messageDiv) {
             const contentEl = messageDiv.querySelector('.message-content');
-            contentEl.innerHTML = content;
+            
+            // 验证是否包含Markdown特征（如#、-、`等）
+            const isMarkdown = /[#*_-`]/.test(content);
+            if (!isMarkdown) {
+                // 强制转换为Markdown格式（简单处理）
+                content = `### 响应内容\n\n${content.replace(/\n/g, '\n- ')}`;
+            }
+            
+            contentEl.innerHTML = marked.parse(content);
         }
-    }
 
+    }
     // 滚动到底部
     scrollToBottom() {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
@@ -240,23 +275,29 @@ class ChatApp {
         // 按时间倒序排列
         conversations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .forEach(conv => {
-                const item = document.createElement('div');
-                item.className = 'conversation-item';
-                item.textContent = conv.title;
-                item.addEventListener('click', () => this.loadConversation(conv.id));
-
-                // 新增删除图标
-                const deleteIcon = document.createElement('span');
-                deleteIcon.className = 'delete-icon';
-                deleteIcon.textContent = '🗑️';
-                deleteIcon.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.deleteConversation(conv.id);
-                });
-                item.appendChild(deleteIcon);
-
+                const item = this.createConversationItem(conv);
                 this.chatList.appendChild(item);
             });
+    }
+
+    // 创建会话列表项
+    createConversationItem(conv) {
+        const item = document.createElement('div');
+        item.className = 'conversation-item';
+        item.textContent = conv.title;
+        item.addEventListener('click', () => this.loadConversation(conv.id));
+
+        // 新增删除图标
+        const deleteIcon = document.createElement('span');
+        deleteIcon.className = 'delete-icon';
+        deleteIcon.textContent = '🗑️';
+        deleteIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteConversation(conv.id);
+        });
+        item.appendChild(deleteIcon);
+
+        return item;
     }
 
     // 加载指定会话

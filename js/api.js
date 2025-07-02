@@ -5,10 +5,10 @@ class APIManager {
         this.apiUrl = '';
         this.ollamaUrl = 'http://localhost:11434';
         this.availableModels = {
-            qwen: ['qwen3-235b-a22b', '123'],
+            qwen: ['qwen3-235b-a22b'],
             deepseek: ['deepseek-chat'],
             kimi: ['moonshot-v1-8k'],
-            ollama: ['deepseek-r1:14b']
+            ollama: ['deepseek-r1:14b','deepseek-r1:7b', 'qwen2.5vl:7b']
         };
     }
 
@@ -32,22 +32,24 @@ class APIManager {
         this.ollamaUrl = url;
     }
 
-    // 发送消息（统一入口）
+    // 修改sendMessage方法，添加格式约束
     async sendMessage(message) {
+        // 强制添加格式要求前缀
+        const formattedMessage = `请严格按照Markdown格式回答，包括标题、列表、代码块等元素。问题：${message}`;
+        
         switch (this.currentModel) {
             case 'qwen':
-                return this.sendToQwen(message);
+                return this.sendToQwen(formattedMessage);
             case 'deepseek':
-                return this.sendToDeepSeek(message);
+                return this.sendToDeepSeek(formattedMessage);
             case 'kimi':
-                return this.sendToKimi(message);
+                return this.sendToKimi(formattedMessage);
             case 'ollama':
-                return this.sendToOllama(message);
+                return this.sendToOllama(formattedMessage);
             default:
                 throw new Error(`不支持的模型: ${this.currentModel}`);
         }
     }
-
     // 发送到通义千问
     async sendToQwen(message) {
         /*默认API KEY：sk-7616714ea81e434fba8e6e46aa42b5fb*/
@@ -161,11 +163,15 @@ class APIManager {
         }
     }
 
-    // 获取可用模型
+   // 获取可用模型
     getAvailableModel(api) {
-        return this.availableModels[api][0]; // 目前只返回第一个模型，可根据需求扩展
+        const selectedModel = document.getElementById('available-model-select').value;
+        const models = this.availableModels[api];
+        if (models.includes(selectedModel)) {
+            return selectedModel;
+        }
+        return models[0]; // 如果选择的模型不在列表中，返回第一个模型
     }
-
     // 获取指定 API 的可用模型列表
     getAvailableModelsForAPI(api) {
         return this.availableModels[api] || [];

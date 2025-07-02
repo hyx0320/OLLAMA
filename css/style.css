@@ -84,26 +84,30 @@ body {
 
 .model-selector {
     margin-bottom: 15px;
+    position: relative;
 }
 
-#model-select {
+/* 统一选项框样式 */
+.model-selector select,
+.api-config input {
     width: 100%;
-    padding: 10px 12px; /* 调整内边距与 API 输入框一致 */
+    padding: 10px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 6px; /* 调整边框圆角与 API 输入框一致 */
+    border-radius: 6px;
     background-color: white;
-    font-size: 14px; /* 调整字体大小与 API 输入框一致 */
-    appearance: none; /* 去除默认的下拉箭头 */
+    font-size: 14px;
+    appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
-#model-select:focus {
+.model-selector select:focus,
+.api-config input:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); /* 添加聚焦时的阴影效果 */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* 自定义下拉箭头 */
@@ -114,7 +118,7 @@ body {
     right: 16px;
     transform: translateY(-50%);
     color: #94a3b8;
-    pointer-events: none; /* 让箭头不影响选择框的点击事件 */
+    pointer-events: none;
 }
 
 /* 聊天列表 */
@@ -168,18 +172,7 @@ body {
 }
 
 .api-config input {
-    width: 100%;
-    padding: 10px 12px;
     margin-bottom: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-}
-
-.api-config input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .clear-settings-btn {
