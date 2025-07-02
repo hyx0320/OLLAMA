@@ -133,7 +133,6 @@ class APIManager {
     }
 
     // 发送到本地Ollama
-    // 发送到本地Ollama
     async sendToOllama(message) {
         try {
             const url = `${this.ollamaUrl}/api/chat`;
@@ -141,7 +140,7 @@ class APIManager {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'qwen2.5vl:7b', // 根据实际安装情况修改
+                    model: 'deepseek-r1:14b', // 根据实际安装情况修改
                     messages: [{ role: 'user', content: message }],
                     stream: false
                 })

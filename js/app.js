@@ -32,6 +32,9 @@ class ChatApp {
         this.fileUpload = document.getElementById('file-upload');
         // 新增删除会话按钮
         this.deleteChatBtn = document.getElementById('delete-chat-btn'); 
+        // 新增切换侧边栏按钮
+        this.toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+        this.sidebar = document.querySelector('.sidebar');
     }
 
     // 绑定事件
@@ -65,6 +68,10 @@ class ChatApp {
 
         // 删除会话按钮事件
         this.deleteChatBtn.addEventListener('click', () => this.deleteCurrentConversation()); 
+        // 新增切换侧边栏按钮事件
+        this.toggleSidebarBtn.addEventListener('click', () => {
+            this.sidebar.classList.toggle('hidden');
+        });
     }
 
     // 配置变更处理
@@ -109,13 +116,27 @@ class ChatApp {
         messageContent.className = 'message-content';
         messageContent.innerHTML = content;
 
-        messageDiv.appendChild(avatar);
-        messageDiv.appendChild(messageContent);
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
+        // 添加复制按钮
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.textContent = '复制';
+        copyButton.addEventListener('click', () => {
+            const textToCopy = messageContent.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('复制成功');
+            }).catch((error) => {
+                console.error('复制失败:', error);
+            });
+    });
 
-        return messageId;
-    }
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(messageContent);
+    messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
+    this.chatMessages.appendChild(messageDiv);
+    this.scrollToBottom();
+
+    return messageId;
+}
 
     // 更新消息内容
     updateMessage(messageId, content) {
