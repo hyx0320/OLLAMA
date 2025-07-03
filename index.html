@@ -3,80 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本地化AI聊天界面</title>
+    <title>AI 智能助手</title>
     <link rel="stylesheet" href="./css/style.css">
-    <!-- 引入 marked 库 -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/app.js"></script>
 </head>
 <body>
-    <button id="toggle-sidebar-btn">隐藏侧边栏</button>
+    <button id="toggle-sidebar-btn" class="sidebar-toggle">
+        <span class="sidebar-icon">☰</span>
+        <span class="sidebar-text">隐藏侧边栏</span>
+    </button>
     <div class="app-container">
         <!-- 侧边栏 -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>会话</h2>
-                <button id="new-chat-btn">+ 新会话</button>
-                <!-- 新增模型切换 -->
-                <div class="model-selector">
-                    <select id="model-select">
-                        <option value="qwen">通义千问</option>
-                        <option value="deepseek">DeepSeek</option>
-                        <option value="kimi">Kimi</option>
-                        <option value="ollama">本地Ollama</option>
-                    </select>
+                <div class="sidebar-top-actions">
+                    <h2>会话列表</h2>
+                    <button id="new-chat-btn" class="new-chat-btn">+ 新对话</button>
                 </div>
-                <!-- 新增可用模型选择器 -->
-                <div class="model-selector">
-                    <select id="available-model-select">
-                        <!-- 模型选项将通过 JS 动态生成 -->
-                    </select>
+                
+                <div class="sidebar-search">
+                    <input type="text" id="chat-search" placeholder="搜索历史对话...">
+                </div>
+                
+                <div class="model-selectors">
+                    <div class="model-selector">
+                        <select id="model-select">
+                            <option value="qwen">通义千问</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="kimi">Kimi</option>
+                            <option value="ollama">本地Ollama</option>
+                        </select>
+                    </div>
+                    <div class="model-selector">
+                        <select id="available-model-select">
+                            <!-- 模型选项将通过 JS 动态生成 -->
+                        </select>
+                    </div>
                 </div>
             </div>
-            <div class="chat-list" id="chat-list">
-                <!-- 历史对话列表 -->
+            
+            <div class="chat-list-container">
+                <div class="chat-list" id="chat-list">
+                    <!-- 历史对话列表 -->
+                </div>
             </div>
-            <!-- API配置区域 -->
+            
             <div class="sidebar-footer">
                 <div class="api-config">
                     <input type="text" id="api-key" placeholder="API Key (sk-...)">
                     <input type="text" id="api-url" placeholder="API URL (可选)">
                     <input type="text" id="ollama-url" placeholder="Ollama地址 (默认: http://localhost:11434)">
                 </div>
-                <button id="clear-settings-btn" class="clear-settings-btn">
-                    <span>🗑️</span>
-                    <span>清除保存的设置</span>
-                </button>
+                
+                <div class="sidebar-actions">
+                    <button id="dark-mode-btn" class="dark-mode-btn">
+                        <span>🌙</span>
+                        <span>夜间模式</span>
+                    </button>
+                    <button id="clear-settings-btn" class="clear-settings-btn">
+                        <span>🗑️</span>
+                        <span>清除设置</span>
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- 主聊天区域 -->
         <div class="main-content">
             <div class="chat-header">
-                <h3 id="chat-title">新对话</h3>
+                <div class="chat-title-container">
+                    <h3 id="chat-title">新对话</h3>
+                    <div class="chat-title-actions">
+                        <button id="rename-chat-btn" class="icon-btn" title="重命名">✏️</button>
+                    </div>
+                </div>
+                
                 <div class="chat-actions">
-                    <button id="save-chat-btn">💾 重命名会话</button>
-                    <button id="upload-file-btn">📂 上传文件</button>
-                    <!-- 新增删除会话按钮 -->
-                    <button id="delete-chat-btn">🗑️ 删除会话</button> 
+                    <button id="export-chat-btn" class="icon-btn" title="导出对话">📤</button>
+                    <div class="dropdown">
+                        <button id="export-format-btn" class="icon-btn">↓</button>
+                        <div class="dropdown-content">
+                            <a href="#" data-format="markdown">导出为 Markdown</a>
+                            <a href="#" data-format="pdf">导出为 PDF</a>
+                            <a href="#" data-format="text">导出为 纯文本</a>
+                        </div>
+                    </div>
+                    <button id="upload-file-btn" class="icon-btn" title="上传文件">📂</button>
+                    <button id="delete-chat-btn" class="icon-btn danger" title="删除会话">🗑️</button>
                 </div>
             </div>
+            
             <div class="chat-messages" id="chat-messages">
                 <!-- 对话消息将通过JS动态生成 -->
             </div>
+            
             <div class="chat-input-container">
                 <div class="input-area">
                     <textarea id="message-input" placeholder="输入消息...按Enter发送，Shift+Enter换行" rows="3"></textarea>
-                   <div class="button-group">
-                    <button id="send-btn" class="send-btn">发送</button>
-                        <button id="deep-thinking-btn" class="deep-thinking-btn" title="深度思考模式">💭 深度思考</button>
+                    <div class="button-group">
+                        <button id="send-btn" class="send-btn">发送</button>
+                        <button id="deep-thinking-btn" class="deep-thinking-btn" title="深度思考模式">💭 思考</button>
                         <button id="web-search-btn" class="web-search-btn" title="联网搜索最新信息">
                             <span class="slider">🌐</span>
                         </button>
                     </div>
                 </div>
-                 <input type="file" id="file-upload" accept=".txt,.md,.pdf" style="display:none">
+                <div class="file-upload-hint" id="file-upload-hint"></div>
+                <input type="file" id="file-upload" accept=".txt,.md,.pdf,.docx,.xlsx,.pptx" multiple style="display:none">
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="rename-modal">
+        <div class="modal-content">
+            <h3>重命名会话</h3>
+            <input type="text" id="new-chat-title" placeholder="输入新标题">
+            <div class="modal-actions">
+                <button id="cancel-rename-btn">取消</button>
+                <button id="confirm-rename-btn">确认</button>
             </div>
         </div>
     </div>

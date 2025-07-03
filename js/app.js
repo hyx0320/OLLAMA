@@ -3,11 +3,13 @@ class ChatApp {
         this.apiManager = new APIManager();
         this.messageIdCounter = 0;
         this.currentConversationId = null;
+        this.isDarkMode = false;
         this.initializeElements();
         this.bindEvents();
         this.loadSettings();
         this.loadConversations();
-        this.updateAvailableModels(); // 初始化可用模型选项
+        this.updateAvailableModels();
+        this.checkDarkModePreference();
     }
 
     // 初始化DOM元素
@@ -24,24 +26,34 @@ class ChatApp {
         this.apiKeyInput = document.getElementById('api-key');
         this.apiUrlInput = document.getElementById('api-url');
         this.ollamaUrlInput = document.getElementById('ollama-url');
-        this.clearSettingsBtn = document.getElementById('clear-settings-btn');
         this.modelSelect = document.getElementById('model-select');
-        this.availableModelSelect = document.getElementById('available-model-select'); // 新增
+        this.availableModelSelect = document.getElementById('available-model-select');
         
         // 功能按钮
-        this.saveChatBtn = document.getElementById('save-chat-btn');
+        this.renameChatBtn = document.getElementById('rename-chat-btn');
+        this.exportChatBtn = document.getElementById('export-chat-btn');
         this.uploadFileBtn = document.getElementById('upload-file-btn');
         this.fileUpload = document.getElementById('file-upload');
+        this.fileUploadHint = document.getElementById('file-upload-hint');
         this.webSearchBtn = document.getElementById('web-search-btn');
-
-        // 新增删除会话按钮
-        this.deleteChatBtn = document.getElementById('delete-chat-btn'); 
-        // 新增切换侧边栏按钮
+        this.deepThinkingBtn = document.getElementById('deep-thinking-btn');
+        this.deleteChatBtn = document.getElementById('delete-chat-btn');
+        this.darkModeBtn = document.getElementById('dark-mode-btn');
+        
+        // 模态框元素
+        this.renameModal = document.getElementById('rename-modal');
+        this.newChatTitleInput = document.getElementById('new-chat-title');
+        this.cancelRenameBtn = document.getElementById('cancel-rename-btn');
+        this.confirmRenameBtn = document.getElementById('confirm-rename-btn');
+        
+        // 侧边栏元素
         this.toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
         this.sidebar = document.querySelector('.sidebar');
-        //思考
-        this.deepThinkingBtn = document.getElementById('deep-thinking-btn');
+        this.chatSearchInput = document.getElementById('chat-search');
 
+
+        this.clearSettingsBtn = document.getElementById('clear-settings-btn');
+        this.clearSettingsBtn.addEventListener('click', () => this.clearSettings());
     }
 
     // 绑定事件
@@ -57,60 +69,140 @@ class ChatApp {
 
         // 会话管理
         this.newChatBtn.addEventListener('click', () => this.createNewChat());
-        this.saveChatBtn.addEventListener('click', () => this.saveCurrentConversation());
+        this.renameChatBtn.addEventListener('click', () => this.showRenameModal());
+        this.deleteChatBtn.addEventListener('click', () => this.deleteCurrentConversation());
+        
+        // 文件处理
         this.uploadFileBtn.addEventListener('click', () => this.fileUpload.click());
         this.fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
-        this.webSearchBtn.addEventListener('click', () => this.sendMessageWithWebSearch());
-
+        
+        // 功能按钮
+        this.webSearchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.webSearchBtn.classList.toggle('active');
+        });
+        
+        this.deepThinkingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.deepThinkingBtn.classList.toggle('active');
+        });
+        
+        this.darkModeBtn.addEventListener('click', () => this.toggleDarkMode());
+        this.exportChatBtn.addEventListener('click', () => this.exportConversation('markdown'));
+        
         // 模型切换
         this.modelSelect.addEventListener('change', (e) => {
             this.apiManager.setModel(e.target.value);
             this.saveSettings();
-            this.updateAvailableModels(); // 更新可用模型选项
+            this.updateAvailableModels();
         });
 
         // 配置管理
         this.apiKeyInput.addEventListener('input', (e) => this.handleConfigChange(e));
         this.apiUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
         this.ollamaUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
-        this.clearSettingsBtn.addEventListener('click', () => this.clearAllSettings());
-
-        // 删除会话按钮事件
-        this.deleteChatBtn.addEventListener('click', () => this.deleteCurrentConversation()); 
-        // 新增切换侧边栏按钮事件
-        this.toggleSidebarBtn.addEventListener('click', () => {
-            this.sidebar.classList.toggle('hidden');
+        
+        // 侧边栏控制
+        this.toggleSidebarBtn.addEventListener('click', () => this.toggleSidebar());
+        this.chatSearchInput.addEventListener('input', () => this.filterConversations());
+        
+        // 模态框控制
+        this.cancelRenameBtn.addEventListener('click', () => this.hideRenameModal());
+        this.confirmRenameBtn.addEventListener('click', () => this.renameCurrentConversation());
+        
+        // 导出格式选择
+        document.querySelectorAll('.dropdown-content a').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.exportConversation(e.target.dataset.format);
+            });
         });
 
-        this.webSearchBtn.addEventListener('click', (e) => {
-        // 阻止默认行为，因为我们只需要切换开关状态
-            e.preventDefault();
-            this.webSearchBtn.classList.toggle('active');
-        });
-        //思考
-        this.deepThinkingBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.deepThinkingBtn.classList.toggle('active');
-        });
-
+        this.darkModeBtn.addEventListener('click', () => this.toggleDarkMode());
     }
 
-    // 配置变更处理
-    handleConfigChange(e) {
-        const { id, value } = e.target;
-        if (id === 'api-key') this.apiManager.setApiKey(value);
-        if (id === 'api-url') this.apiManager.setApiUrl(value);
-        if (id === 'ollama-url') this.apiManager.setOllamaUrl(value);
-        this.saveSettings();
+    // 检查用户偏好暗色模式
+   // 更新 checkDarkModePreference 方法
+    checkDarkModePreference() {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedMode = localStorage.getItem('darkMode') === 'true';
+        
+        // 优先使用用户保存的设置，其次是系统偏好
+        this.toggleDarkMode(savedMode || (prefersDark && savedMode !== false));
+        
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (localStorage.getItem('darkMode') === null) {
+                this.toggleDarkMode(e.matches);
+            }
+        });
     }
 
-    // 修改 sendMessage 方法支持思考功能
+    // 切换暗色模式
+    // 更新 toggleDarkMode 方法
+    toggleDarkMode(force = false) {
+        if (force !== undefined) {
+            this.isDarkMode = force;
+        } else {
+            this.isDarkMode = !this.isDarkMode;
+        }
+        
+        if (this.isDarkMode) {
+            document.body.classList.add('dark-mode');
+            this.darkModeBtn.innerHTML = '<span>☀️</span> <span>日间模式</span>';
+        } else {
+            document.body.classList.remove('dark-mode');
+            this.darkModeBtn.innerHTML = '<span>🌙</span> <span>夜间模式</span>';
+        }
+        
+        localStorage.setItem('darkMode', this.isDarkMode);
+        
+        // 在移动设备上隐藏文本
+        if (window.innerWidth <= 768) {
+            const spans = this.darkModeBtn.querySelectorAll('span');
+            spans[1].style.display = 'none';
+        }
+    }
+
+    // 切换侧边栏
+    toggleSidebar() {
+        this.sidebar.classList.toggle('hidden');
+        
+        const sidebarIcon = this.toggleSidebarBtn.querySelector('.sidebar-icon');
+        const sidebarText = this.toggleSidebarBtn.querySelector('.sidebar-text');
+        
+        if (this.sidebar.classList.contains('hidden')) {
+            sidebarIcon.textContent = '☰';
+            sidebarText.textContent = '显示侧边栏';
+        } else {
+            sidebarIcon.textContent = '✕';
+            sidebarText.textContent = '隐藏侧边栏';
+        }
+        
+        // 在移动端添加/移除show类
+        if (window.innerWidth <= 768) {
+            this.sidebar.classList.toggle('show');
+        }
+    }
+
+    // 添加清除设置方法
+    clearSettings() {
+        if (confirm('确定要清除所有设置和会话历史吗？此操作不可撤销。')) {
+            localStorage.clear();
+            this.loadSettings();
+            this.loadConversations();
+            this.createNewChat();
+            this.showToast('已清除所有设置和会话历史');
+        }
+    }
+
+    // 发送消息
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
 
         // 如果是新对话的第一个消息，自动保存并使用第一个问题作为标题
-        if (this.currentConversationId && !this.chatMessages.children.length) {
+        if (!this.currentConversationId) {
             const defaultTitle = message.length > 20 ? message.substring(0, 20) + '...' : message;
             this.saveCurrentConversation(defaultTitle, true);
         }
@@ -146,216 +238,308 @@ class ChatApp {
                 // 普通模式
                 const dots = '<div class="loading-dots"><span></span><span></span><span></span></div>';
                 loadingDiv.querySelector('.message-content').innerHTML = dots;
-                response = await this.apiManager.sendMessage(message);
+                
+                if (this.webSearchBtn.classList.contains('active')) {
+                    response = await this.apiManager.sendMessageWithWebSearch(message);
+                    this.webSearchBtn.classList.remove('active');
+                } else {
+                    response = await this.apiManager.sendMessage(message);
+                }
             }
             
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
-        } catch (error) {
-            this.updateMessage(loadingId, `❌ 错误: ${error.message}`);
-        }
-    }
-
-    // 修改 sendMessageWithWebSearch 方法，检查开关状态
-    async sendMessageWithWebSearch() {
-        // 检查开关是否激活
-        if (!this.webSearchBtn.classList.contains('active')) {
-            return; // 如果开关未激活，不执行搜索
-        }
-        
-        const message = this.messageInput.value.trim();
-        if (!message) return;
-
-        // 添加搜索状态指示
-        const searchStatusId = this.addMessage('system', 
-            '<div class="search-status searching">🔍 正在联网搜索最新信息...</div>');
-
-        try {
-            const response = await this.apiManager.sendMessageWithWebSearch(message);
-            
-            // 更新搜索状态
-            this.updateMessage(searchStatusId, 
-                '<div class="search-status success">✅ 已获取最新搜索结果</div>');
-            
-            // 添加搜索结果
-            this.addMessage('assistant', response);
-            
-            // 自动保存搜索会话
-            if (!this.currentConversationId) {
-                const title = `搜索: ${message.substring(0, 20)}${message.length > 20 ? '...' : ''}`;
-                this.saveCurrentConversation(title, true);
+        } // 在 app.js 的 sendMessage 方法中更新错误处理
+            catch (error) {
+                console.error('发送消息失败:', error);
+                let errorMsg = `❌ 错误: ${error.message}`;
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = '❌ 网络请求失败，请检查:\n';
+                    errorMsg += '1. API密钥是否正确\n';
+                    errorMsg += '2. API地址是否正确\n';
+                    errorMsg += '3. 网络连接是否正常\n';
+                    if (this.apiManager.currentModel === 'ollama') {
+                        errorMsg += '4. Ollama服务是否已启动\n';
+                    }
+                    errorMsg += `\n详细错误: ${error.message}`;
+                }
+                this.updateMessage(loadingId, errorMsg);
             }
-        } catch (error) {
-            this.updateMessage(searchStatusId, 
-                `<div class="search-status error">❌ 搜索失败: ${error.message}</div>`);
-        } finally {
-            this.messageInput.value = '';
-            // 搜索完成后关闭开关
-            this.webSearchBtn.classList.remove('active');
+    }
+
+    // 处理文件上传
+    async handleFileUpload(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // 重置文件输入
+        this.fileUpload.value = '';
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 显示文件上传提示
+            this.fileUploadHint.textContent = `正在上传: ${file.name}...`;
+            this.fileUploadHint.style.display = 'block';
+            
+            try {
+                const content = await this.readFileContent(file);
+                this.addMessage('user', `📄 上传了文件: ${file.name} (${this.formatFileSize(file.size)})`);
+                
+                const loadingId = this.addMessage('assistant', '', true);
+                const loadingDiv = document.getElementById(loadingId);
+                loadingDiv.querySelector('.message-content').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+                
+                const response = await this.apiManager.sendMessage(`请处理以下文件内容: \n${content}`);
+                this.updateMessage(loadingId, response);
+                
+                this.updateConversationHistory();
+            } catch (error) {
+                this.addMessage('system', `❌ 上传文件失败: ${file.name} (${error.message})`);
+            } finally {
+                this.fileUploadHint.style.display = 'none';
+            }
         }
     }
 
-    // 修改addMessage方法，添加搜索标识
+    // 读取文件内容
+    readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            // 简单文件类型验证
+            const allowedTypes = [
+                'text/plain', 
+                'application/pdf', 
+                'text/markdown',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            ];
+            
+            if (!allowedTypes.includes(file.type) && 
+                !file.name.match(/\.(txt|md|pdf|docx|xlsx|pptx)$/i)) {
+                return reject(new Error('不支持的文件类型'));
+            }
+            
+            // 限制文件大小 (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                return reject(new Error('文件大小超过5MB限制'));
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = (event) => {
+                // 限制内容长度 (前5000个字符)
+                resolve(event.target.result.substring(0, 5000));
+            };
+            
+            reader.onerror = () => {
+                reject(new Error('读取文件失败'));
+            };
+            
+            if (file.type === 'application/pdf') {
+                // PDF文件处理 (简化版，实际应该使用PDF.js提取文本)
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
+        });
+    }
+
+    // 格式化文件大小
+    formatFileSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    // 添加消息到聊天界面
     addMessage(role, content, isLoading = false) {
         const messageId = `msg_${++this.messageIdCounter}`;
-        const messageDiv = this.createMessageDiv(role, messageId);
-        const avatar = this.createAvatar(role);
-        const messageContent = this.createMessageContent(content);
-        const copyButton = this.createCopyButton(messageContent);
-
-        // 如果是联网搜索的回复，添加标识
-        if (content.includes('🔍')) {
-            const searchIndicator = document.createElement('span');
-            searchIndicator.className = 'search-indicator';
-            searchIndicator.innerHTML = '<span class="search-icon">🔍</span> 联网搜索';
-            messageContent.appendChild(searchIndicator);
-        }
-
-        messageDiv.appendChild(avatar);
-        messageDiv.appendChild(messageContent);
-        messageDiv.appendChild(copyButton);
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-
-        return messageId;
-    }
-
-    // 创建消息元素
-    createMessageDiv(role, messageId) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}-message`;
         messageDiv.id = messageId;
-        return messageDiv;
-    }
-
-    // 创建头像元素
-    createAvatar(role) {
+        
+        // 添加时间戳
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = timestamp;
+        
+        // 创建头像
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
         avatar.textContent = role === 'user' ? '👤' : '🤖';
-        return avatar;
-    }
-
-    // 创建消息内容元素
-    createMessageContent(content) {
+        
+        // 创建消息内容
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
-        messageContent.innerHTML = content;
-        return messageContent;
+        
+        if (isLoading) {
+            messageContent.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+        } else {
+            messageContent.innerHTML = marked.parse(content);
+        }
+        
+        // 创建操作按钮
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'message-action-btn';
+        copyBtn.innerHTML = '📋';
+        copyBtn.title = '复制';
+        copyBtn.addEventListener('click', () => this.copyToClipboard(messageContent.textContent));
+        
+        actionsDiv.appendChild(copyBtn);
+        
+        // 如果是用户消息，添加编辑按钮
+        if (role === 'user') {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'message-action-btn';
+            editBtn.innerHTML = '✏️';
+            editBtn.title = '编辑';
+            editBtn.addEventListener('click', () => this.editMessage(messageId));
+            actionsDiv.appendChild(editBtn);
+        }
+        
+        // 组装消息元素
+        messageDiv.appendChild(timeDiv);
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(messageContent);
+        messageDiv.appendChild(actionsDiv);
+        
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+        
+        return messageId;
     }
 
-    // 创建复制按钮
-    createCopyButton(messageContent) {
-        const copyButton = document.createElement('button');
-        copyButton.className = 'copy-button';
-        copyButton.textContent = '复制';
-        copyButton.addEventListener('click', () => {
-            const textToCopy = messageContent.textContent;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                alert('复制成功');
-            }).catch((error) => {
-                console.error('复制失败:', error);
-            });
-        });
-        return copyButton;
-    }
-
-    // 修改updateMessage方法，添加格式验证
+    // 更新消息内容
     updateMessage(messageId, content) {
         const messageDiv = document.getElementById(messageId);
         if (messageDiv) {
             const contentEl = messageDiv.querySelector('.message-content');
-            
-            // 验证是否包含Markdown特征（如#、-、`等）
-            const isMarkdown = /[#*_-`]/.test(content);
-            if (!isMarkdown) {
-                // 强制转换为Markdown格式（简单处理）
-                content = `### 响应内容\n\n${content.replace(/\n/g, '\n- ')}`;
-            }
-            
             contentEl.innerHTML = marked.parse(content);
         }
-
     }
+
+    // 编辑消息
+    editMessage(messageId) {
+        const messageDiv = document.getElementById(messageId);
+        if (!messageDiv) return;
+        
+        const contentEl = messageDiv.querySelector('.message-content');
+        const originalContent = contentEl.textContent;
+        
+        // 创建编辑区域
+        const textarea = document.createElement('textarea');
+        textarea.value = originalContent;
+        textarea.style.width = '100%';
+        textarea.style.minHeight = '100px';
+        
+        // 创建按钮容器
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.style.display = 'flex';
+        buttonsDiv.style.gap = '10px';
+        buttonsDiv.style.marginTop = '10px';
+        
+        // 创建保存按钮
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '保存';
+        saveBtn.addEventListener('click', () => {
+            this.updateMessage(messageId, textarea.value);
+            this.updateConversationHistory();
+        });
+        
+        // 创建取消按钮
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '取消';
+        cancelBtn.addEventListener('click', () => {
+            contentEl.innerHTML = marked.parse(originalContent);
+        });
+        
+        // 组装编辑界面
+        buttonsDiv.appendChild(saveBtn);
+        buttonsDiv.appendChild(cancelBtn);
+        
+        contentEl.innerHTML = '';
+        contentEl.appendChild(textarea);
+        contentEl.appendChild(buttonsDiv);
+        textarea.focus();
+    }
+
+    // 复制到剪贴板
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('已复制到剪贴板');
+        }).catch(err => {
+            console.error('复制失败:', err);
+            this.showToast('复制失败');
+        });
+    }
+
+    // 显示临时提示
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }, 100);
+    }
+
     // 滚动到底部
     scrollToBottom() {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    // 修改 createNewChat 方法
+    // 创建新对话
     createNewChat() {
         // 如果当前对话有消息但未保存，先保存
         if (this.chatMessages.children.length > 0 && !this.currentConversationId) {
-            this.saveCurrentConversation('自动保存的对话');
+            this.saveCurrentConversation('未命名对话');
         }
         
         this.chatMessages.innerHTML = '';
-        this.chatTitle.textContent = '新对话';
         this.currentConversationId = null;
+        this.chatTitle.textContent = '新对话';
         
         // 创建一个新的自动保存对话
         this.currentConversationId = Date.now().toString();
-        this.chatTitle.textContent = '新对话 (未命名)';
     }
 
-
-    // 处理文件上传
-    async handleFileUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // 简单文件类型验证
-        const allowedTypes = ['text/plain', 'application/pdf', 'text/markdown'];
-        if (!allowedTypes.includes(file.type) && !file.name.endsWith('.md')) {
-            alert('仅支持文本、PDF和Markdown文件');
-            return;
-        }
-
-        this.addMessage('user', `📄 上传了文件: ${file.name}`);
-        
-        // 读取文件内容
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const content = event.target.result.substring(0, 5000); // 限制最大长度
-            const loadingId = this.addMessage('assistant', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
-            
-            try {
-                const response = await this.apiManager.sendMessage(`请处理以下文件内容: \n${content}`);
-                this.updateMessage(loadingId, response);
-            } catch (error) {
-                this.updateMessage(loadingId, `❌ 处理文件失败: ${error.message}`);
-            }
-        };
-
-        // 根据文件类型选择读取方式
-        if (file.type === 'application/pdf') {
-            alert('PDF文件支持将在后续版本更新');
-            this.fileUpload.value = '';
-        } else {
-            reader.readAsText(file);
-        }
-    }
-
-    // 修改 saveCurrentConversation 方法，添加 autoSave 参数
-    saveCurrentConversation(defaultTitle = '', autoSave = false) {
+    // 保存当前对话
+    saveCurrentConversation(title = '', autoSave = false) {
         const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
             return {
                 role: msg.classList.contains('user-message') ? 'user' : 'assistant',
-                content: msg.querySelector('.message-content').innerText
+                content: msg.querySelector('.message-content').textContent,
+                timestamp: msg.querySelector('.message-time').textContent
             };
         });
 
         if (messages.length === 0) {
             if (!autoSave) {
-                alert('没有可保存的消息');
+                this.showToast('没有可保存的消息');
             }
             return;
         }
 
-        let title = defaultTitle;
-        if (!autoSave) {
-            title = prompt('请输入会话标题:', title || `会话_${new Date().toLocaleDateString()}`);
-            if (!title) return;
+        // 如果没有提供标题，使用第一条消息的前20个字符
+        if (!title && messages.length > 0) {
+            title = messages[0].content.substring(0, 20);
+            if (messages[0].content.length > 20) title += '...';
+        }
+
+        // 如果是自动保存且没有标题，使用默认标题
+        if (autoSave && !title) {
+            title = `对话 ${new Date().toLocaleDateString()}`;
         }
 
         const conversation = {
@@ -380,7 +564,7 @@ class ChatApp {
         this.chatTitle.textContent = conversation.title;
     }
 
-    // 加载会话列表
+    // 加载对话列表
     loadConversations() {
         this.chatList.innerHTML = '';
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
@@ -393,27 +577,47 @@ class ChatApp {
             });
     }
 
-    // 创建会话列表项
+    // 过滤对话列表
+    filterConversations() {
+        const searchTerm = this.chatSearchInput.value.toLowerCase();
+        const items = this.chatList.querySelectorAll('.conversation-item');
+        
+        items.forEach(item => {
+            const title = item.textContent.toLowerCase();
+            item.style.display = title.includes(searchTerm) ? 'flex' : 'none';
+        });
+    }
+
+    // 创建对话列表项
     createConversationItem(conv) {
         const item = document.createElement('div');
         item.className = 'conversation-item';
-        item.textContent = conv.title;
-        item.addEventListener('click', () => this.loadConversation(conv.id));
-
-        // 新增删除图标
+        if (conv.id === this.currentConversationId) {
+            item.classList.add('active');
+        }
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'conversation-title';
+        titleSpan.textContent = conv.title;
+        
         const deleteIcon = document.createElement('span');
         deleteIcon.className = 'delete-icon';
         deleteIcon.textContent = '🗑️';
+        deleteIcon.title = '删除';
+        
+        item.appendChild(titleSpan);
+        item.appendChild(deleteIcon);
+        
+        item.addEventListener('click', () => this.loadConversation(conv.id));
         deleteIcon.addEventListener('click', (e) => {
             e.stopPropagation();
             this.deleteConversation(conv.id);
         });
-        item.appendChild(deleteIcon);
-
+        
         return item;
     }
 
-    // 加载指定会话
+    // 加载指定对话
     loadConversation(id) {
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
         const conversation = conversations.find(c => c.id === id);
@@ -426,9 +630,21 @@ class ChatApp {
 
         this.chatTitle.textContent = conversation.title;
         this.currentConversationId = id;
+        
+        // 更新对话列表中的活动项
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const activeItem = [...document.querySelectorAll('.conversation-item')]
+            .find(item => item.querySelector('.conversation-title').textContent === conversation.title);
+        
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
     }
 
-    // 更新会话历史
+    // 更新对话历史
     updateConversationHistory() {
         if (!this.currentConversationId) return;
 
@@ -439,73 +655,65 @@ class ChatApp {
             conversations[index].messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
                 return {
                     role: msg.classList.contains('user-message') ? 'user' : 'assistant',
-                    content: msg.querySelector('.message-content').innerText
+                    content: msg.querySelector('.message-content').textContent,
+                    timestamp: msg.querySelector('.message-time').textContent
                 };
             });
             localStorage.setItem('conversations', JSON.stringify(conversations));
         }
     }
 
-    // 保存配置
-    saveSettings() {
-        const settings = {
-            apiKey: this.apiKeyInput.value,
-            apiUrl: this.apiUrlInput.value,
-            ollamaUrl: this.ollamaUrlInput.value || 'http://localhost:11434',
-            currentModel: this.modelSelect.value
-        };
-        localStorage.setItem('ai_chat_settings', JSON.stringify(settings));
-        this.apiManager.setModel(this.modelSelect.value);
-    }
-
-    // 加载配置
-    loadSettings() {
-        try {
-            const settings = JSON.parse(localStorage.getItem('ai_chat_settings') || '{}');
-            if (settings.apiKey) this.apiKeyInput.value = settings.apiKey;
-            if (settings.apiUrl) this.apiUrlInput.value = settings.apiUrl;
-            if (settings.ollamaUrl) this.ollamaUrlInput.value = settings.ollamaUrl;
-            if (settings.currentModel) this.modelSelect.value = settings.currentModel;
-
-            // 初始化API管理器
-            this.apiManager.setApiKey(settings.apiKey || '');
-            this.apiManager.setApiUrl(settings.apiUrl || '');
-            this.apiManager.setOllamaUrl(settings.ollamaUrl || 'http://localhost:11434');
-            this.apiManager.setModel(settings.currentModel || 'qwen');
-            this.updateAvailableModels(); // 更新可用模型选项
-        } catch (error) {
-            console.error('加载配置失败:', error);
+    // 显示重命名模态框
+    showRenameModal() {
+        if (!this.currentConversationId) {
+            this.showToast('请先创建一个对话');
+            return;
         }
+        
+        this.newChatTitleInput.value = this.chatTitle.textContent;
+        this.renameModal.style.display = 'flex';
+        this.newChatTitleInput.focus();
     }
 
-    // 清除所有配置
-    clearAllSettings() {
-        if (confirm('确定要清除所有配置和会话记录吗？')) {
-            localStorage.removeItem('ai_chat_settings');
-            localStorage.removeItem('conversations');
-            this.apiKeyInput.value = '';
-            this.apiUrlInput.value = '';
-            this.ollamaUrlInput.value = '';
-            this.createNewChat();
+    // 隐藏重命名模态框
+    hideRenameModal() {
+        this.renameModal.style.display = 'none';
+    }
+
+    // 重命名当前对话
+    renameCurrentConversation() {
+        const newTitle = this.newChatTitleInput.value.trim();
+        if (!newTitle) {
+            this.showToast('标题不能为空');
+            return;
+        }
+        
+        const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const index = conversations.findIndex(c => c.id === this.currentConversationId);
+        
+        if (index !== -1) {
+            conversations[index].title = newTitle;
+            localStorage.setItem('conversations', JSON.stringify(conversations));
+            this.chatTitle.textContent = newTitle;
             this.loadConversations();
-            this.apiManager = new APIManager();
+            this.hideRenameModal();
         }
     }
 
-    // 删除当前会话
+    // 删除当前对话
     deleteCurrentConversation() {
         if (!this.currentConversationId) {
-            alert('当前没有可删除的会话');
+            this.showToast('当前没有可删除的对话');
             return;
         }
 
-        if (confirm('确定要删除当前会话吗？')) {
+        if (confirm('确定要删除当前对话吗？此操作不可撤销。')) {
             this.deleteConversation(this.currentConversationId);
             this.createNewChat();
         }
     }
 
-    // 删除指定会话
+    // 删除指定对话
     deleteConversation(id) {
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
         const newConversations = conversations.filter(c => c.id !== id);
@@ -515,6 +723,53 @@ class ChatApp {
         if (this.currentConversationId === id) {
             this.createNewChat();
         }
+        
+        this.showToast('对话已删除');
+    }
+
+    // 导出对话
+    exportConversation(format) {
+        if (!this.currentConversationId) {
+            this.showToast('没有可导出的对话');
+            return;
+        }
+        
+        const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        const conversation = conversations.find(c => c.id === this.currentConversationId);
+        if (!conversation) return;
+        
+        let content = '';
+        const title = `# ${conversation.title}\n\n`;
+        
+        if (format === 'markdown') {
+            content = title + conversation.messages.map(msg => {
+                return `**${msg.role === 'user' ? '用户' : '助手'} (${msg.timestamp})**:\n${msg.content}\n`;
+            }).join('\n');
+            
+            this.downloadFile(`${conversation.title}.md`, content);
+        } else if (format === 'pdf') {
+            // 实际实现需要使用PDF生成库，这里简化处理
+            this.showToast('PDF导出功能将在后续版本实现');
+        } else if (format === 'text') {
+            content = conversation.title + '\n\n' + conversation.messages.map(msg => {
+                return `${msg.role === 'user' ? '用户' : '助手'} (${msg.timestamp}): ${msg.content}`;
+            }).join('\n\n');
+            
+            this.downloadFile(`${conversation.title}.txt`, content);
+        }
+    }
+
+    // 下载文件
+    downloadFile(filename, content) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // 更新可用模型选项
@@ -529,6 +784,48 @@ class ChatApp {
             option.textContent = model;
             this.availableModelSelect.appendChild(option);
         });
+    }
+
+    // 配置变更处理
+    handleConfigChange(e) {
+        const { id, value } = e.target;
+        if (id === 'api-key') this.apiManager.setApiKey(value);
+        if (id === 'api-url') this.apiManager.setApiUrl(value);
+        if (id === 'ollama-url') this.apiManager.setOllamaUrl(value);
+        this.saveSettings();
+    }
+
+    // 保存配置
+    saveSettings() {
+        const settings = {
+            apiKey: this.apiKeyInput.value,
+            apiUrl: this.apiUrlInput.value,
+            ollamaUrl: this.ollamaUrlInput.value || 'http://localhost:11434',
+            currentModel: this.modelSelect.value,
+            darkMode: this.isDarkMode
+        };
+        localStorage.setItem('ai_chat_settings', JSON.stringify(settings));
+    }
+
+    // 加载配置
+    loadSettings() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('ai_chat_settings') || '{}');
+            if (settings.apiKey) this.apiKeyInput.value = settings.apiKey;
+            if (settings.apiUrl) this.apiUrlInput.value = settings.apiUrl;
+            if (settings.ollamaUrl) this.ollamaUrlInput.value = settings.ollamaUrl;
+            if (settings.currentModel) this.modelSelect.value = settings.currentModel;
+            if (settings.darkMode) this.toggleDarkMode(settings.darkMode);
+
+            // 初始化API管理器
+            this.apiManager.setApiKey(settings.apiKey || '');
+            this.apiManager.setApiUrl(settings.apiUrl || '');
+            this.apiManager.setOllamaUrl(settings.ollamaUrl || 'http://localhost:11434');
+            this.apiManager.setModel(settings.currentModel || 'qwen');
+            this.updateAvailableModels();
+        } catch (error) {
+            console.error('加载配置失败:', error);
+        }
     }
 }
 
