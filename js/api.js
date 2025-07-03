@@ -51,6 +51,27 @@ class APIManager {
         }
     }
 
+    //思考功能
+    async sendMessageWithThinking(message, callback) {
+        // 模拟思考过程
+        const thinkingSteps = [
+            "正在分析问题背景...",
+            "检索相关知识库...",
+            "构建初步解决方案...",
+            "验证方案可行性...",
+            "优化最终回答..."
+        ];
+        
+        // 发送思考过程
+        for (const step of thinkingSteps) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            callback(step);
+        }
+        
+        // 发送最终回答
+        return this.sendMessage(message);
+    }
+
 
     //联网搜索
     async sendMessageWithWebSearch(message) {

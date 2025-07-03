@@ -39,6 +39,9 @@ class ChatApp {
         // 新增切换侧边栏按钮
         this.toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
         this.sidebar = document.querySelector('.sidebar');
+        //思考
+        this.deepThinkingBtn = document.getElementById('deep-thinking-btn');
+
     }
 
     // 绑定事件
@@ -84,6 +87,12 @@ class ChatApp {
             e.preventDefault();
             this.webSearchBtn.classList.toggle('active');
         });
+        //思考
+        this.deepThinkingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.deepThinkingBtn.classList.toggle('active');
+        });
+
     }
 
     // 配置变更处理
@@ -95,7 +104,7 @@ class ChatApp {
         this.saveSettings();
     }
 
-    // 修改 sendMessage 方法
+    // 修改 sendMessage 方法支持思考功能
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
@@ -108,13 +117,38 @@ class ChatApp {
 
         this.addMessage('user', message);
         this.messageInput.value = '';
-        const loadingId = this.addMessage('assistant', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
+        
+        const loadingId = this.addMessage('assistant', '', true);
+        const loadingDiv = document.getElementById(loadingId);
+        const thinkingContainer = document.createElement('div');
+        thinkingContainer.className = 'thinking-container';
+        loadingDiv.querySelector('.message-content').appendChild(thinkingContainer);
 
         try {
             const selectedModel = this.availableModelSelect.value;
             this.apiManager.setModel(this.modelSelect.value);
             this.apiManager.getAvailableModel = () => selectedModel;
-            const response = await this.apiManager.sendMessage(message);
+            
+            let response;
+            if (this.deepThinkingBtn.classList.contains('active')) {
+                // 显示思考过程
+                response = await this.apiManager.sendMessageWithThinking(
+                    message,
+                    (thinkingStep) => {
+                        const stepElement = document.createElement('div');
+                        stepElement.className = 'thinking-process';
+                        stepElement.textContent = thinkingStep;
+                        thinkingContainer.appendChild(stepElement);
+                        this.scrollToBottom();
+                    }
+                );
+            } else {
+                // 普通模式
+                const dots = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+                loadingDiv.querySelector('.message-content').innerHTML = dots;
+                response = await this.apiManager.sendMessage(message);
+            }
+            
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
         } catch (error) {
