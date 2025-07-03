@@ -86,21 +86,25 @@ class ChatApp {
         this.saveSettings();
     }
 
-    // 发送消息
+    // 修改 sendMessage 方法
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
+
+        // 如果是新对话的第一个消息，自动保存并使用第一个问题作为标题
+        if (this.currentConversationId && !this.chatMessages.children.length) {
+            const defaultTitle = message.length > 20 ? message.substring(0, 20) + '...' : message;
+            this.saveCurrentConversation(defaultTitle, true);
+        }
 
         this.addMessage('user', message);
         this.messageInput.value = '';
         const loadingId = this.addMessage('assistant', '<div class="loading-dots"><span></span><span></span><span></span></div>', true);
 
         try {
-            // 获取用户选择的具体模型
             const selectedModel = this.availableModelSelect.value;
-            this.apiManager.setModel(this.modelSelect.value); // 设置 API 类型
-            this.apiManager.getAvailableModel = () => selectedModel; // 临时覆盖 getAvailableModel 方法，确保使用选择的模型
-            // 修改此处，使用添加Markdown提示后的消息
+            this.apiManager.setModel(this.modelSelect.value);
+            this.apiManager.getAvailableModel = () => selectedModel;
             const response = await this.apiManager.sendMessage(message);
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
@@ -190,12 +194,22 @@ class ChatApp {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    // 新建会话
+    // 修改 createNewChat 方法
     createNewChat() {
+        // 如果当前对话有消息但未保存，先保存
+        if (this.chatMessages.children.length > 0 && !this.currentConversationId) {
+            this.saveCurrentConversation('自动保存的对话');
+        }
+        
         this.chatMessages.innerHTML = '';
         this.chatTitle.textContent = '新对话';
         this.currentConversationId = null;
+        
+        // 创建一个新的自动保存对话
+        this.currentConversationId = Date.now().toString();
+        this.chatTitle.textContent = '新对话 (未命名)';
     }
+
 
     // 处理文件上传
     async handleFileUpload(e) {
@@ -234,8 +248,8 @@ class ChatApp {
         }
     }
 
-    // 保存当前会话
-    saveCurrentConversation() {
+    // 修改 saveCurrentConversation 方法，添加 autoSave 参数
+    saveCurrentConversation(defaultTitle = '', autoSave = false) {
         const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
             return {
                 role: msg.classList.contains('user-message') ? 'user' : 'assistant',
@@ -244,27 +258,38 @@ class ChatApp {
         });
 
         if (messages.length === 0) {
-            alert('没有可保存的消息');
+            if (!autoSave) {
+                alert('没有可保存的消息');
+            }
             return;
         }
 
-        const title = prompt('请输入会话标题:', `会话_${new Date().toLocaleDateString()}`);
-        if (!title) return;
+        let title = defaultTitle;
+        if (!autoSave) {
+            title = prompt('请输入会话标题:', title || `会话_${new Date().toLocaleDateString()}`);
+            if (!title) return;
+        }
 
         const conversation = {
-            id: Date.now().toString(),
+            id: this.currentConversationId || Date.now().toString(),
             title,
             timestamp: new Date().toISOString(),
             messages
         };
 
-        // 保存到本地存储
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-        conversations.push(conversation);
-        localStorage.setItem('conversations', JSON.stringify(conversations));
+        const existingIndex = conversations.findIndex(c => c.id === conversation.id);
         
+        if (existingIndex !== -1) {
+            conversations[existingIndex] = conversation;
+        } else {
+            conversations.push(conversation);
+        }
+        
+        localStorage.setItem('conversations', JSON.stringify(conversations));
         this.loadConversations();
         this.currentConversationId = conversation.id;
+        this.chatTitle.textContent = conversation.title;
     }
 
     // 加载会话列表

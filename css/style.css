@@ -405,3 +405,11 @@ body {
 .message:hover .copy-button {
     display: block;
 }
+.chat-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
