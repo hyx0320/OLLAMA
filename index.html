@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 智能助手</title>
     <link rel="stylesheet" href="./css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-    <script src="./js/api.js"></script>
-    <script src="./js/app.js"></script>
 </head>
 <body>
     <button id="toggle-sidebar-btn" class="sidebar-toggle">
@@ -104,15 +100,19 @@
                 <div class="input-area">
                     <textarea id="message-input" placeholder="输入消息...按Enter发送，Shift+Enter换行" rows="3"></textarea>
                     <div class="button-group">
-                        <button id="send-btn" class="send-btn">发送</button>
-                        <button id="deep-thinking-btn" class="deep-thinking-btn" title="深度思考模式">💭 思考</button>
-                        <button id="web-search-btn" class="web-search-btn" title="联网搜索最新信息">
-                            <span class="slider">🌐</span>
+                        <button id="deep-thinking-btn" class="feature-btn deep-thinking-btn">
+                            <span>💭</span>
+                            <span>深度思考</span>
                         </button>
+                        <button id="web-search-btn" class="feature-btn web-search-btn">
+                            <span>🌐</span>
+                            <span>联网搜索</span>
+                        </button>
+                        <button id="send-btn" class="send-btn">发送</button>
                     </div>
                 </div>
                 <div class="file-upload-hint" id="file-upload-hint"></div>
-                <input type="file" id="file-upload" accept=".txt,.md,.pdf,.docx,.xlsx,.pptx" multiple style="display:none">
+                <input type="file" id="file-upload" style="display:none">
             </div>
         </div>
     </div>
@@ -127,5 +127,11 @@
             </div>
         </div>
     </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/app.js"></script>
 </body>
 </html>

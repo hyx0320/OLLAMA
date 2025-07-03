@@ -1,26 +1,44 @@
-/* ======================== */
-/* === 基础样式与变量定义 === */
-/* ======================== */
-
+/* 日间模式变量定义 */
 :root {
-    /* 颜色变量 */
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --text-color: #1e293b;
-    --text-light: #64748b;
-    --bg-color: #ffffff;
-    --bg-secondary: #f8fafc;
-    --border-color: #e2e8f0;
-    
-    /* 阴影与圆角 */
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --primary-color: #2196f3; /* 浅蓝色，明亮且醒目 */
+    --primary-hover: #1976d2; /* 稍深的蓝色，用于悬停效果 */
+    --success-color: #4caf50; /* 亮绿色，代表成功 */
+    --danger-color: #f44336; /* 亮红色，用于危险提示 */
+    --warning-color: #ff9800; /* 亮橙色，用于警告 */
+    --text-color: #212121; /* 纯黑色文本，清晰易读 */
+    --text-light: #757575; /* 灰色，用于次要文本 */
+    --bg-color: #ffffff; /* 白色背景，常见的日间模式背景 */
+    --bg-secondary: #f5f5f5; /* 浅灰色背景，用于次要区域 */
+    --border-color: #bdbdbd; /* 浅灰色边框 */
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); /* 较淡的阴影，增加层次感 */
     --radius-sm: 6px;
     --radius-md: 12px;
     --radius-lg: 16px;
 }
+
+/* 夜间模式变量定义 */
+:root[data-theme="dark"] {
+    --primary-color: #1a73e8; /* 深蓝色，在夜间更柔和 */
+    --primary-hover: #1662c7; /* 稍深的蓝色，用于悬停效果 */
+    --success-color: #34a853; /* 深绿色，在夜间有较好辨识度 */
+    --danger-color: #ea4335; /* 深红色，用于危险提示 */
+    --warning-color: #fbbc05; /* 深黄色，用于警告 */
+    --text-color: #e8eaed; /* 浅灰色，易于阅读 */
+    --text-light: #9aa0a6; /* 更浅的灰色，用于次要文本 */
+    --bg-color: #121212; /* 纯黑色背景，减少眼睛刺激 */
+    --bg-secondary: #1e1e1e; /* 稍亮的黑色，用于次要区域 */
+    --border-color: #3c4043; /* 深灰色边框 */
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5); /* 更明显的阴影，增加层次感 */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+}
+
+/* 主内容区域 - 夜间模式 */
+:root[data-theme="dark"] .main-content {
+    background-color: var(--bg-color);
+}
+
 
 /* 全局基础样式 */
 * {
@@ -31,140 +49,47 @@
     transition: background-color 0.3s, color 0.3s;
 }
 
-body {
+/* 日间模式下的 body 样式 */
+:root body {
     background-color: var(--bg-secondary);
     color: var(--text-color);
     height: 100vh;
     overflow: hidden;
 }
 
-/* ================= */
-/* === 暗色模式样式 === */
-/* ================= */
-
-.dark-mode {
-    /* 颜色变量覆盖 */
-    --primary-color: #58a6ff;
-    --primary-hover: #1f6feb;
-    --success-color: #2ea043;
-    --danger-color: #f85149;
-    --warning-color: #d29922;
-    --text-color: #e6edf3;
-    --text-light: #7d8590;
-    --bg-color: #0d1117;
-    --bg-secondary: #161b22;
-    --border-color: #30363d;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+/* 夜间模式下的 body 样式 */
+:root[data-theme="dark"] body {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* 暗色模式下的代码块 */
-.dark-mode .message-content pre {
-    background-color: rgba(110, 118, 129, 0.2);
-    border: 1px solid #30363d;
+/* 确保侧边栏隐藏不受影响 */
+.sidebar.hidden {
+    transform: translateX(-100%);
 }
 
-/* 暗色模式下的表格 */
-.dark-mode .message-content th,
-.dark-mode .message-content td {
-    border-color: #30363d;
-}
-
-.dark-mode .message-content th {
-    background-color: #161b22;
-}
-
-/* 暗色模式下的按钮 */
-.dark-mode .icon-btn {
-    background-color: #21262d;
-    color: #c9d1d9;
-}
-
-.dark-mode .icon-btn:hover {
-    background-color: #30363d;
-}
-
-.dark-mode .icon-btn.danger {
-    background-color: rgba(248, 81, 73, 0.1);
-    color: #f85149;
-}
-
-.dark-mode .icon-btn.danger:hover {
-    background-color: rgba(248, 81, 73, 0.2);
-}
-
-/* 暗色模式下的输入框 */
-.dark-mode #message-input,
-.dark-mode .sidebar-search input,
-.dark-mode .model-selector select,
-.dark-mode .api-config input {
-    background-color: #161b22;
-    color: #e6edf3;
-    border-color: #30363d;
-}
-
-.dark-mode #message-input:focus,
-.dark-mode .sidebar-search input:focus,
-.dark-mode .model-selector select:focus,
-.dark-mode .api-config input:focus {
-    border-color: #58a6ff;
-    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-}
-
-/* 暗色模式下的下拉菜单 */
-.dark-mode .dropdown-content {
-    background-color: #161b22;
-    border-color: #30363d;
-}
-
-.dark-mode .dropdown-content a {
-    color: #e6edf3;
-}
-
-.dark-mode .dropdown-content a:hover {
-    background-color: #21262d;
-}
-
-/* 暗色模式下的模态框 */
-.dark-mode .modal-content {
-    background-color: #161b22;
-}
-
-.dark-mode .modal input {
-    background-color: #0d1117;
-    color: #e6edf3;
-    border-color: #30363d;
-}
-
-/* 暗色模式下的思考过程 */
-.dark-mode .thinking-process {
-    background-color: rgba(56, 139, 253, 0.1);
-    border-left-color: #58a6ff;
-    color: #58a6ff;
-}
-
-/* 暗色模式下的按钮悬停效果 */
-.dark-mode .dark-mode-btn:hover {
-    background-color: #21262d !important;
-}
-
-.dark-mode .clear-settings-btn:hover {
-    background-color: rgba(248, 81, 73, 0.2) !important;
-}
-
-/* ================= */
-/* === 布局与容器 === */
-/* ================= */
-
+/* 布局与容器 */
 .app-container {
     display: flex;
     height: 100vh;
 }
 
-/* =============== */
-/* === 侧边栏样式 === */
-/* =============== */
+/* 侧边栏样式 - 日间模式 */
+:root .sidebar {
+    width: 320px;
+    background-color: var(--bg-color);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
 
-.sidebar {
+/* 侧边栏样式 - 夜间模式 */
+:root[data-theme="dark"] .sidebar {
     width: 320px;
     background-color: var(--bg-color);
     border-right: 1px solid var(--border-color);
@@ -179,7 +104,6 @@ body {
     transform: translateX(-100%);
 }
 
-/* 侧边栏头部 */
 .sidebar-header {
     padding: 20px;
     border-bottom: 1px solid var(--border-color);
@@ -197,7 +121,6 @@ body {
     font-weight: 600;
 }
 
-/* 侧边栏搜索 */
 .sidebar-search {
     margin-bottom: 15px;
 }
@@ -218,7 +141,6 @@ body {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* 模型选择器 */
 .model-selectors {
     display: flex;
     flex-direction: column;
@@ -252,7 +174,6 @@ body {
     pointer-events: none;
 }
 
-/* 聊天列表 */
 .chat-list-container {
     flex: 1;
     overflow-y: auto;
@@ -294,7 +215,6 @@ body {
     display: block;
 }
 
-/* 侧边栏底部 */
 .sidebar-footer {
     padding: 15px;
     border-top: 1px solid var(--border-color);
@@ -318,7 +238,6 @@ body {
     font-size: 13px;
 }
 
-/* 侧边栏操作按钮 */
 .sidebar-actions {
     display: flex;
     gap: 10px;
@@ -357,7 +276,6 @@ body {
     transform: translateY(-1px);
 }
 
-/* 侧边栏切换按钮 */
 .sidebar-toggle {
     position: fixed;
     top: 15px;
@@ -384,18 +302,22 @@ body {
     font-size: 14px;
 }
 
-/* =============== */
-/* === 主内容区域 === */
-/* =============== */
-
-.main-content {
+/* 主内容区域 - 日间模式 */
+:root .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-color);
 }
 
-/* 聊天头部 */
+/* 主内容区域 - 夜间模式 */
+:root[data-theme="dark"] .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-color);
+}
+
 .chat-header {
     padding: 15px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -420,7 +342,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* 聊天操作按钮 */
 .chat-actions {
     display: flex;
     gap: 8px;
@@ -453,7 +374,6 @@ body {
     background-color: #fee2e2;
 }
 
-/* 下拉菜单 */
 .dropdown {
     position: relative;
     display: inline-block;
@@ -488,7 +408,6 @@ body {
     display: block;
 }
 
-/* 聊天消息区域 */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -496,7 +415,6 @@ body {
     background: linear-gradient(to bottom, var(--bg-color), var(--bg-secondary));
 }
 
-/* 消息样式 */
 .message {
     display: flex;
     margin-bottom: 20px;
@@ -586,7 +504,6 @@ body {
     background-color: var(--bg-secondary);
 }
 
-/* 错误消息样式 */
 .message-content.error {
     background-color: #fef2f2 !important;
     color: #b91c1c !important;
@@ -595,25 +512,25 @@ body {
     border-radius: var(--radius-sm);
 }
 
-.dark-mode .message-content.error {
+[data-theme="dark"] .message-content.error {
     background-color: #7f1d1d !important;
     color: #fecaca !important;
 }
 
-/* ================= */
-/* === 输入区域样式 === */
-/* ================= */
-
+/* 输入区域样式 */
 .chat-input-container {
     padding: 15px 20px;
     border-top: 1px solid var(--border-color);
     background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .input-area {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    align-items: flex-end;
 }
 
 #message-input {
@@ -636,45 +553,57 @@ body {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* 按钮组 */
 .button-group {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 120px;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-end;
 }
 
 .send-btn {
-    padding: 12px 16px;
+    padding: 10px 20px;
     background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 500;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .send-btn:hover {
     background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.feature-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.feature-btn:hover {
+    background-color: var(--border-color);
+}
+
+.feature-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
 }
 
 .deep-thinking-btn {
-    padding: 12px 16px;
     background-color: #e0f2fe;
     color: #0369a1;
     border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-weight: 500;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
 }
 
 .deep-thinking-btn:hover {
@@ -686,41 +615,19 @@ body {
     color: white;
 }
 
-/* 网页搜索按钮 */
 .web-search-btn {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-    height: 40px;
-    border-radius: 20px;
-    background-color: var(--border-color);
-    cursor: pointer;
-    overflow: hidden;
-    transition: all 0.4s ease;
+    background-color: #ecfdf5;
+    color: #047857;
+    border: none;
 }
 
-.web-search-btn .slider {
-    position: absolute;
-    height: 32px;
-    width: 32px;
-    right: 4px;
-    bottom: 4px;
-    background-color: white;
-    border-radius: 50%;
-    transition: all 0.4s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    box-shadow: var(--shadow);
+.web-search-btn:hover {
+    background-color: #d1fae5;
 }
 
 .web-search-btn.active {
-    background-color: var(--success-color);
-}
-
-.web-search-btn.active .slider {
-    transform: translateX(-76px);
+    background-color: #10b981;
+    color: white;
 }
 
 .file-upload-hint {
@@ -730,10 +637,7 @@ body {
     display: none;
 }
 
-/* ============== */
-/* === 模态框样式 === */
-/* ============== */
-
+/* 模态框样式 */
 .modal {
     display: none;
     position: fixed;
@@ -791,10 +695,7 @@ body {
     background-color: var(--primary-hover);
 }
 
-/* ================= */
-/* === Markdown 样式 === */
-/* ================= */
-
+/* Markdown 样式 */
 .message-content pre {
     background-color: rgba(0, 0, 0, 0.05);
     padding: 12px;
@@ -830,10 +731,7 @@ body {
     background-color: var(--bg-secondary);
 }
 
-/* ================= */
-/* === 加载动画样式 === */
-/* ================= */
-
+/* 加载动画样式 */
 .loading-dots {
     display: inline-flex;
     gap: 4px;
@@ -855,10 +753,7 @@ body {
     40% { transform: scale(1); }
 }
 
-/* ================= */
-/* === 思考过程样式 === */
-/* ================= */
-
+/* 思考过程样式 */
 .thinking-container {
     display: flex;
     flex-direction: column;
@@ -876,10 +771,13 @@ body {
     line-height: 1.5;
 }
 
-/* ================= */
-/* === 搜索相关样式 === */
-/* ================= */
+[data-theme="dark"] .thinking-process {
+    background-color: rgba(56, 139, 253, 0.1);
+    border-left-color: #58a6ff;
+    color: #58a6ff;
+}
 
+/* 搜索相关样式 */
 .search-status {
     padding: 12px;
     border-radius: var(--radius-sm);
@@ -905,12 +803,8 @@ body {
     border-left: 3px solid var(--danger-color);
 }
 
-/* ================= */
-/* === 响应式设计 === */
-/* ================= */
-
+/* 响应式设计 */
 @media (max-width: 768px) {
-    /* 侧边栏 */
     .sidebar {
         position: fixed;
         width: 280px;
@@ -926,40 +820,90 @@ body {
         display: block;
     }
     
-    /* 按钮组 */
     .button-group {
-        width: 100px;
+        flex-wrap: wrap;
     }
     
-    .web-search-btn.active .slider {
-        transform: translateX(-56px);
+    .feature-btn {
+        flex: 1;
+        padding: 8px;
+        font-size: 13px;
     }
     
-    /* 聊天标题 */
+    .feature-btn span:last-child {
+        display: none;
+    }
+    
     .chat-title-container {
         max-width: 40%;
     }
     
-    /* 消息内容 */
     .message-content {
         max-width: 85%;
     }
     
-    /* 隐藏侧边栏切换按钮文本 */
     .sidebar-toggle .sidebar-text {
         display: none;
     }
     
-    /* 隐藏按钮文本 */
     .dark-mode-btn span:last-child,
     .clear-settings-btn span:last-child {
         display: none;
     }
     
-    /* 调整按钮大小 */
     .dark-mode-btn,
     .clear-settings-btn {
         padding: 8px;
         justify-content: center;
+    }
+}
+
+.new-chat-btn {
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.new-chat-btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.new-chat-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .new-chat-btn {
+    background-color: var(--primary-color);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .new-chat-btn:hover {
+    background-color: var(--primary-hover);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 768px) {
+    .new-chat-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .new-chat-btn span:first-child {
+        margin-right: 0;
     }
 }

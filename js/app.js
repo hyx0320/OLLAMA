@@ -10,7 +10,7 @@ class ChatApp {
         // 应用状态变量
         this.messageIdCounter = 0;
         this.currentConversationId = null;
-        this.isDarkMode = false;
+        this.isDarkMode = false; // 默认白天模式
         
         // 初始化UI元素和事件
         this.initializeElements();
@@ -20,7 +20,7 @@ class ChatApp {
         this.loadSettings();
         this.loadConversations();
         this.updateAvailableModels();
-        this.checkDarkModePreference();
+        this.checkDarkModePreference(); // 强制设置为白天模式
     }
 
     /* ===================== */
@@ -56,6 +56,10 @@ class ChatApp {
         this.deepThinkingBtn = document.getElementById('deep-thinking-btn');
         this.deleteChatBtn = document.getElementById('delete-chat-btn');
         this.darkModeBtn = document.getElementById('dark-mode-btn');
+
+
+        //调试
+        console.log('darkModeBtn:', this.darkModeBtn);
         
         // 模态框相关元素
         this.renameModal = document.getElementById('rename-modal');
@@ -146,7 +150,11 @@ class ChatApp {
             this.deepThinkingBtn.classList.toggle('active');
         });
         
-        this.darkModeBtn.addEventListener('click', () => this.toggleDarkMode());
+        //调试
+        this.darkModeBtn.addEventListener('click', () => {
+            console.log('Dark mode button clicked');
+            this.toggleDarkMode();
+        });
         this.exportChatBtn.addEventListener('click', () => this.exportConversation('markdown'));
         
         // 导出格式选择
@@ -156,6 +164,9 @@ class ChatApp {
                 this.exportConversation(e.target.dataset.format);
             });
         });
+
+
+        
     }
 
     /**
@@ -196,48 +207,30 @@ class ChatApp {
     /* ===================== */
 
     /**
-     * 检查用户偏好暗色模式
+     * 检查用户偏好暗色模式（默认白天模式）
      */
     checkDarkModePreference() {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const savedMode = localStorage.getItem('darkMode') === 'true';
-        
-        // 优先使用用户保存的设置，其次是系统偏好
-        this.toggleDarkMode(savedMode || (prefersDark && savedMode !== false));
-        
-        // 监听系统主题变化
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (localStorage.getItem('darkMode') === null) {
-                this.toggleDarkMode(e.matches);
-            }
-        });
+        this.isDarkMode = false;
+        document.body.removeAttribute('data-theme');
+        this.darkModeBtn.innerHTML = '<span>🌙</span><span>夜间模式</span>';
     }
 
     /**
-     * 切换暗色模式
-     * @param {boolean} force - 强制设置为指定模式
+     * 切换暗色模式（不保存偏好）
      */
-    toggleDarkMode(force = false) {
-        if (force !== undefined) {
-            this.isDarkMode = force;
-        } else {
-            this.isDarkMode = !this.isDarkMode;
-        }
+    //调试
+    toggleDarkMode() {
+        this.isDarkMode = !this.isDarkMode;
+        console.log('isDarkMode toggled to:', this.isDarkMode);
         
         if (this.isDarkMode) {
-            document.body.classList.add('dark-mode');
-            this.darkModeBtn.innerHTML = '<span>☀️</span> <span>日间模式</span>';
+            document.body.setAttribute('data-theme', 'dark');
+            console.log('data-theme attribute set to "dark"');
+            this.darkModeBtn.innerHTML = '<span>☀️</span><span>日间模式</span>';
         } else {
-            document.body.classList.remove('dark-mode');
-            this.darkModeBtn.innerHTML = '<span>🌙</span> <span>夜间模式</span>';
-        }
-        
-        localStorage.setItem('darkMode', this.isDarkMode);
-        
-        // 在移动设备上隐藏文本
-        if (window.innerWidth <= 768) {
-            const spans = this.darkModeBtn.querySelectorAll('span');
-            spans[1].style.display = 'none';
+            document.body.removeAttribute('data-theme');
+            console.log('data-theme attribute removed');
+            this.darkModeBtn.innerHTML = '<span>🌙</span><span>夜间模式</span>';
         }
     }
 
@@ -959,21 +952,21 @@ class ChatApp {
     }
 
     /**
-     * 保存配置
+     * 保存配置（移除darkMode保存）
      */
     saveSettings() {
         const settings = {
             apiKey: this.apiKeyInput.value,
             apiUrl: this.apiUrlInput.value,
             ollamaUrl: this.ollamaUrlInput.value || 'http://localhost:11434',
-            currentModel: this.modelSelect.value,
-            darkMode: this.isDarkMode
+            currentModel: this.modelSelect.value
+            // 不保存 darkMode
         };
         localStorage.setItem('ai_chat_settings', JSON.stringify(settings));
     }
 
     /**
-     * 加载配置
+     * 加载配置（移除darkMode加载）
      */
     loadSettings() {
         try {
@@ -982,7 +975,7 @@ class ChatApp {
             if (settings.apiUrl) this.apiUrlInput.value = settings.apiUrl;
             if (settings.ollamaUrl) this.ollamaUrlInput.value = settings.ollamaUrl;
             if (settings.currentModel) this.modelSelect.value = settings.currentModel;
-            if (settings.darkMode) this.toggleDarkMode(settings.darkMode);
+            // 不加载 darkMode
 
             // 初始化API管理器
             this.apiManager.setApiKey(settings.apiKey || '');
@@ -1009,7 +1002,14 @@ class ChatApp {
     }
 }
 
+
+
+let app;
 // 初始化应用
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new ChatApp();
-});
+window.onload = function() {
+    // 这里直接给全局作用域的 app 变量赋值
+    app = new ChatApp();
+    app.bindMessageEvents();
+    app.loadSettings();
+    // 其他初始化代码
+};
