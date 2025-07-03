@@ -50,106 +50,220 @@ class APIManager {
                 throw new Error(`不支持的模型: ${this.currentModel}`);
         }
     }
-    // 发送到通义千问
-    async sendToQwen(message) {
-        /*默认API KEY：sk-7616714ea81e434fba8e6e46aa42b5fb*/
+
+
+    //联网搜索
+    async sendMessageWithWebSearch(message) {
+        // 统一格式的搜索指令
+        const formattedMessage = `[WEB_SEARCH] ${message}\n\n请执行以下操作：
+1. 进行联网搜索获取最新信息
+2. 整理并验证搜索结果
+3. 用Markdown格式回答，包含来源引用`;
+        
+        try {
+            switch (this.currentModel) {
+                case 'qwen':
+                    return this.sendToQwen(formattedMessage, true);
+                case 'deepseek':
+                    return this.sendToDeepSeek(formattedMessage, true);
+                case 'kimi':
+                    return this.sendToKimi(formattedMessage, true);
+                case 'ollama':
+                    // Ollama本地模型模拟搜索行为
+                    return this.sendToOllama(formattedMessage, true);
+                default:
+                    throw new Error(`不支持的模型: ${this.currentModel}`);
+            }
+        } catch (error) {
+            console.error('联网搜索失败:', error);
+            throw new Error(`联网搜索失败: ${error.message}`);
+        }
+    }
+
+    // 通义千问搜索增强版
+    async sendToQwen(message, webSearch = false) {
         if (!this.apiKey) throw new Error('请设置通义千问API Key');
         
         const url = this.apiUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        const payload = {
+            model: this.getAvailableModel('qwen'),
+            messages: [{ role: 'user', content: message }],
+            max_tokens: 5000,
+            temperature: 0.7
+        };
+
+        if (webSearch) {
+            payload.plugins = [{
+                "web_search": {
+                    "enable": true,
+                    "search_result": true,
+                    "max_results": 5  // 增加搜索结果数量
+                }
+            }];
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`
             },
-            body: JSON.stringify({
-                model: this.getAvailableModel('qwen'),
-                messages: [{ role: 'user', content: message }],
-                enable_thinking: false, // 需确保此处为false
-                max_tokens: 5000,
-                temperature: 0.7
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`通义千问API错误: ${response.status} - ${error}`);
+            const error = await response.json();
+            throw new Error(`通义千问API错误: ${error.message || response.status}`);
         }
 
         const data = await response.json();
-        if (!data.choices?.[0]?.message?.content) {
-            throw new Error('通义千问返回格式异常');
-        }
-
-        return data.choices[0].message.content;
+        return this.formatSearchResult(data.choices[0].message.content, 'qwen');
     }
 
-    // 发送到DeepSeek
-    async sendToDeepSeek(message) {
+
+    // 修改现有的API调用方法，添加webSearch参数
+    async sendToQwen(message, webSearch = false) {
+        if (!this.apiKey) throw new Error('请设置通义千问API Key');
+        
+        const url = this.apiUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        const payload = {
+            model: this.getAvailableModel('qwen'),
+            messages: [{ role: 'user', content: message }],
+            enable_thinking: false,
+            max_tokens: 5000,
+            temperature: 0.7
+        };
+
+        // 添加联网搜索参数
+        if (webSearch) {
+            payload.plugins = [{
+                "web_search": {
+                    "enable": true,
+                    "search_result": true
+                }
+            }];
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(`通义千问API错误: ${response.status} - ${error}`);
+            }
+
+            const data = await response.json();
+            if (!data.choices?.[0]?.message?.content) {
+                throw new Error('通义千问返回格式异常');
+            }
+
+            return data.choices[0].message.content;
+    }
+
+
+    // DeepSeek搜索增强版
+    async sendToDeepSeek(message, webSearch = false) {
         if (!this.apiKey) throw new Error('请设置DeepSeek API Key');
         
         const url = this.apiUrl || 'https://api.deepseek.com/v1/chat/completions';
+        const payload = {
+            model: this.getAvailableModel('deepseek'),
+            messages: [{ role: 'user', content: message }],
+            max_tokens: 5000,
+            temperature: 0.7
+        };
+
+        if (webSearch) {
+            payload.tools = [{
+                "type": "web_search",
+                "web_search": {
+                    "search": true,
+                    "max_results": 3,
+                    "enhanced": true
+                }
+            }];
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`
             },
-            body: JSON.stringify({
-                model: this.getAvailableModel('deepseek'),
-                messages: [{ role: 'user', content: message }],
-                max_tokens: 5000,
-                temperature: 0.7
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`DeepSeek API错误: ${response.status} - ${error}`);
+            const error = await response.json();
+            throw new Error(`DeepSeek API错误: ${error.message || response.status}`);
         }
 
         const data = await response.json();
-        return data.choices?.[0]?.message?.content || '未获取到响应';
+        return this.formatSearchResult(data.choices[0].message.content, 'deepseek');
     }
 
-    // 发送到Kimi
-    async sendToKimi(message) {
+    // Kimi搜索增强版
+    async sendToKimi(message, webSearch = false) {
         if (!this.apiKey) throw new Error('请设置Kimi API Key');
         
         const url = this.apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+        const payload = {
+            model: this.getAvailableModel('kimi'),
+            messages: [{ role: 'user', content: message }],
+            max_tokens: 5000,
+            temperature: 0.7
+        };
+
+        if (webSearch) {
+            payload.tools = [{
+                "type": "web_search",
+                "web_search": {
+                    "enable": true,
+                    "search_mode": "enhanced"
+                }
+            }];
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`
             },
-            body: JSON.stringify({
-                model: this.getAvailableModel('kimi'),
-                messages: [{ role: 'user', content: message }],
-                max_tokens: 5000,
-                temperature: 0.7
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Kimi API错误: ${response.status} - ${error}`);
+            const error = await response.json();
+            throw new Error(`Kimi API错误: ${error.message || response.status}`);
         }
 
         const data = await response.json();
-        return data.choices?.[0]?.message?.content || '未获取到响应';
+        return this.formatSearchResult(data.choices[0].message.content, 'kimi');
     }
 
-    // 发送到本地Ollama
-    async sendToOllama(message) {
+    // Ollama模拟搜索行为
+    async sendToOllama(message, webSearch = false) {
         try {
             const url = `${this.ollamaUrl}/api/chat`;
+            let processedMessage = message;
+            
+            if (webSearch) {
+                processedMessage = `[模拟联网搜索] ${message}\n\n由于是本地模型，我将模拟联网搜索结果:`;
+            }
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     model: this.getAvailableModel('ollama'),
-                    messages: [{ role: 'user', content: message }],
+                    messages: [{ role: 'user', content: processedMessage }],
                     stream: false
                 })
             });
@@ -157,12 +271,23 @@ class APIManager {
             if (!response.ok) throw new Error(`Ollama服务错误: ${response.status}`);
             
             const data = await response.json();
-            return data.message?.content || '未获取到响应';
+            return webSearch ? 
+                this.formatMockSearchResult(data.message?.content) : 
+                data.message?.content;
         } catch (error) {
-            throw new Error(`Ollama连接失败: ${error.message}，请检查服务是否启动`);
+            throw new Error(`Ollama连接失败: ${error.message}`);
         }
     }
 
+    // 格式化搜索结果 (通用)
+    formatSearchResult(content, source) {
+        return `### 搜索结果\n${content}\n\n<small>来源: ${source} 网络搜索</small>`;
+    }
+
+    // Ollama模拟搜索结果
+    formatMockSearchResult(content) {
+        return `### 模拟搜索结果 (本地模型)\n${content}\n\n<small>⚠️ 注意: 这是本地模型模拟的搜索结果</small>`;
+    }
    // 获取可用模型
     getAvailableModel(api) {
         const selectedModel = document.getElementById('available-model-select').value;

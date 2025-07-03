@@ -68,9 +68,14 @@
             <div class="chat-input-container">
                 <div class="input-area">
                     <textarea id="message-input" placeholder="输入消息...按Enter发送，Shift+Enter换行" rows="3"></textarea>
-                    <button id="send-btn" class="send-btn">发送</button>
+                   <div class="button-group">
+                        <button id="send-btn" class="send-btn">发送</button>
+                        <button id="web-search-btn" class="web-search-btn" title="联网搜索最新信息">
+                            <span class="slider">🌐</span>
+                        </button>
+                    </div>
                 </div>
-                <input type="file" id="file-upload" accept=".txt,.md,.pdf" style="display:none">
+                 <input type="file" id="file-upload" accept=".txt,.md,.pdf" style="display:none">
             </div>
         </div>
     </div>

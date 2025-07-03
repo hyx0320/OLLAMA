@@ -32,6 +32,8 @@ class ChatApp {
         this.saveChatBtn = document.getElementById('save-chat-btn');
         this.uploadFileBtn = document.getElementById('upload-file-btn');
         this.fileUpload = document.getElementById('file-upload');
+        this.webSearchBtn = document.getElementById('web-search-btn');
+
         // 新增删除会话按钮
         this.deleteChatBtn = document.getElementById('delete-chat-btn'); 
         // 新增切换侧边栏按钮
@@ -55,6 +57,7 @@ class ChatApp {
         this.saveChatBtn.addEventListener('click', () => this.saveCurrentConversation());
         this.uploadFileBtn.addEventListener('click', () => this.fileUpload.click());
         this.fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
+        this.webSearchBtn.addEventListener('click', () => this.sendMessageWithWebSearch());
 
         // 模型切换
         this.modelSelect.addEventListener('change', (e) => {
@@ -74,6 +77,12 @@ class ChatApp {
         // 新增切换侧边栏按钮事件
         this.toggleSidebarBtn.addEventListener('click', () => {
             this.sidebar.classList.toggle('hidden');
+        });
+
+        this.webSearchBtn.addEventListener('click', (e) => {
+        // 阻止默认行为，因为我们只需要切换开关状态
+            e.preventDefault();
+            this.webSearchBtn.classList.toggle('active');
         });
     }
 
@@ -113,9 +122,46 @@ class ChatApp {
         }
     }
 
+    // 修改 sendMessageWithWebSearch 方法，检查开关状态
+    async sendMessageWithWebSearch() {
+        // 检查开关是否激活
+        if (!this.webSearchBtn.classList.contains('active')) {
+            return; // 如果开关未激活，不执行搜索
+        }
+        
+        const message = this.messageInput.value.trim();
+        if (!message) return;
 
+        // 添加搜索状态指示
+        const searchStatusId = this.addMessage('system', 
+            '<div class="search-status searching">🔍 正在联网搜索最新信息...</div>');
 
-    // 添加消息到界面
+        try {
+            const response = await this.apiManager.sendMessageWithWebSearch(message);
+            
+            // 更新搜索状态
+            this.updateMessage(searchStatusId, 
+                '<div class="search-status success">✅ 已获取最新搜索结果</div>');
+            
+            // 添加搜索结果
+            this.addMessage('assistant', response);
+            
+            // 自动保存搜索会话
+            if (!this.currentConversationId) {
+                const title = `搜索: ${message.substring(0, 20)}${message.length > 20 ? '...' : ''}`;
+                this.saveCurrentConversation(title, true);
+            }
+        } catch (error) {
+            this.updateMessage(searchStatusId, 
+                `<div class="search-status error">❌ 搜索失败: ${error.message}</div>`);
+        } finally {
+            this.messageInput.value = '';
+            // 搜索完成后关闭开关
+            this.webSearchBtn.classList.remove('active');
+        }
+    }
+
+    // 修改addMessage方法，添加搜索标识
     addMessage(role, content, isLoading = false) {
         const messageId = `msg_${++this.messageIdCounter}`;
         const messageDiv = this.createMessageDiv(role, messageId);
@@ -123,9 +169,17 @@ class ChatApp {
         const messageContent = this.createMessageContent(content);
         const copyButton = this.createCopyButton(messageContent);
 
+        // 如果是联网搜索的回复，添加标识
+        if (content.includes('🔍')) {
+            const searchIndicator = document.createElement('span');
+            searchIndicator.className = 'search-indicator';
+            searchIndicator.innerHTML = '<span class="search-icon">🔍</span> 联网搜索';
+            messageContent.appendChild(searchIndicator);
+        }
+
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(messageContent);
-        messageDiv.appendChild(copyButton); // 将复制按钮添加到消息框中
+        messageDiv.appendChild(copyButton);
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
 
