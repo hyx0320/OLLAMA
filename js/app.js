@@ -1,20 +1,37 @@
+/**
+ * AI 智能助手主应用类
+ * 负责管理聊天界面、对话历史、用户交互等功能
+ */
 class ChatApp {
     constructor() {
+        // 初始化API管理器
         this.apiManager = new APIManager();
+        
+        // 应用状态变量
         this.messageIdCounter = 0;
         this.currentConversationId = null;
         this.isDarkMode = false;
+        
+        // 初始化UI元素和事件
         this.initializeElements();
         this.bindEvents();
+        
+        // 加载应用状态
         this.loadSettings();
         this.loadConversations();
         this.updateAvailableModels();
         this.checkDarkModePreference();
     }
 
-    // 初始化DOM元素
+    /* ===================== */
+    /* === 初始化相关方法 === */
+    /* ===================== */
+
+    /**
+     * 初始化DOM元素引用
+     */
     initializeElements() {
-        // 核心元素
+        // 核心聊天区域元素
         this.chatMessages = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
         this.sendBtn = document.getElementById('send-btn');
@@ -22,14 +39,14 @@ class ChatApp {
         this.chatTitle = document.getElementById('chat-title');
         this.chatList = document.getElementById('chat-list');
         
-        // 配置元素
+        // 配置相关元素
         this.apiKeyInput = document.getElementById('api-key');
         this.apiUrlInput = document.getElementById('api-url');
         this.ollamaUrlInput = document.getElementById('ollama-url');
         this.modelSelect = document.getElementById('model-select');
         this.availableModelSelect = document.getElementById('available-model-select');
         
-        // 功能按钮
+        // 功能按钮元素
         this.renameChatBtn = document.getElementById('rename-chat-btn');
         this.exportChatBtn = document.getElementById('export-chat-btn');
         this.uploadFileBtn = document.getElementById('upload-file-btn');
@@ -40,25 +57,55 @@ class ChatApp {
         this.deleteChatBtn = document.getElementById('delete-chat-btn');
         this.darkModeBtn = document.getElementById('dark-mode-btn');
         
-        // 模态框元素
+        // 模态框相关元素
         this.renameModal = document.getElementById('rename-modal');
         this.newChatTitleInput = document.getElementById('new-chat-title');
         this.cancelRenameBtn = document.getElementById('cancel-rename-btn');
         this.confirmRenameBtn = document.getElementById('confirm-rename-btn');
         
-        // 侧边栏元素
+        // 侧边栏相关元素
         this.toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
         this.sidebar = document.querySelector('.sidebar');
         this.chatSearchInput = document.getElementById('chat-search');
-
-
+        
+        // 清除设置按钮
         this.clearSettingsBtn = document.getElementById('clear-settings-btn');
-        this.clearSettingsBtn.addEventListener('click', () => this.clearSettings());
     }
 
-    // 绑定事件
+    /**
+     * 绑定事件监听器
+     */
     bindEvents() {
-        // 消息发送
+        // 消息发送相关事件
+        this.bindMessageEvents();
+        
+        // 对话管理相关事件
+        this.bindConversationEvents();
+        
+        // 文件处理相关事件
+        this.bindFileEvents();
+        
+        // 功能按钮相关事件
+        this.bindFeatureEvents();
+        
+        // 配置管理相关事件
+        this.bindConfigEvents();
+        
+        // 侧边栏相关事件
+        this.bindSidebarEvents();
+        
+        // 模态框相关事件
+        this.bindModalEvents();
+    }
+
+    /* ===================== */
+    /* === 事件绑定辅助方法 === */
+    /* ===================== */
+
+    /**
+     * 绑定消息发送相关事件
+     */
+    bindMessageEvents() {
         this.sendBtn.addEventListener('click', () => this.sendMessage());
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -66,17 +113,29 @@ class ChatApp {
                 this.sendMessage();
             }
         });
+    }
 
-        // 会话管理
+    /**
+     * 绑定对话管理相关事件
+     */
+    bindConversationEvents() {
         this.newChatBtn.addEventListener('click', () => this.createNewChat());
         this.renameChatBtn.addEventListener('click', () => this.showRenameModal());
         this.deleteChatBtn.addEventListener('click', () => this.deleteCurrentConversation());
-        
-        // 文件处理
+    }
+
+    /**
+     * 绑定文件处理相关事件
+     */
+    bindFileEvents() {
         this.uploadFileBtn.addEventListener('click', () => this.fileUpload.click());
         this.fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
-        
-        // 功能按钮
+    }
+
+    /**
+     * 绑定功能按钮相关事件
+     */
+    bindFeatureEvents() {
         this.webSearchBtn.addEventListener('click', (e) => {
             e.preventDefault();
             this.webSearchBtn.classList.toggle('active');
@@ -90,26 +149,6 @@ class ChatApp {
         this.darkModeBtn.addEventListener('click', () => this.toggleDarkMode());
         this.exportChatBtn.addEventListener('click', () => this.exportConversation('markdown'));
         
-        // 模型切换
-        this.modelSelect.addEventListener('change', (e) => {
-            this.apiManager.setModel(e.target.value);
-            this.saveSettings();
-            this.updateAvailableModels();
-        });
-
-        // 配置管理
-        this.apiKeyInput.addEventListener('input', (e) => this.handleConfigChange(e));
-        this.apiUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
-        this.ollamaUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
-        
-        // 侧边栏控制
-        this.toggleSidebarBtn.addEventListener('click', () => this.toggleSidebar());
-        this.chatSearchInput.addEventListener('input', () => this.filterConversations());
-        
-        // 模态框控制
-        this.cancelRenameBtn.addEventListener('click', () => this.hideRenameModal());
-        this.confirmRenameBtn.addEventListener('click', () => this.renameCurrentConversation());
-        
         // 导出格式选择
         document.querySelectorAll('.dropdown-content a').forEach(item => {
             item.addEventListener('click', (e) => {
@@ -117,12 +156,48 @@ class ChatApp {
                 this.exportConversation(e.target.dataset.format);
             });
         });
-
-        this.darkModeBtn.addEventListener('click', () => this.toggleDarkMode());
     }
 
-    // 检查用户偏好暗色模式
-   // 更新 checkDarkModePreference 方法
+    /**
+     * 绑定配置管理相关事件
+     */
+    bindConfigEvents() {
+        this.modelSelect.addEventListener('change', (e) => {
+            this.apiManager.setModel(e.target.value);
+            this.saveSettings();
+            this.updateAvailableModels();
+        });
+
+        this.apiKeyInput.addEventListener('input', (e) => this.handleConfigChange(e));
+        this.apiUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
+        this.ollamaUrlInput.addEventListener('input', (e) => this.handleConfigChange(e));
+        
+        this.clearSettingsBtn.addEventListener('click', () => this.clearSettings());
+    }
+
+    /**
+     * 绑定侧边栏相关事件
+     */
+    bindSidebarEvents() {
+        this.toggleSidebarBtn.addEventListener('click', () => this.toggleSidebar());
+        this.chatSearchInput.addEventListener('input', () => this.filterConversations());
+    }
+
+    /**
+     * 绑定模态框相关事件
+     */
+    bindModalEvents() {
+        this.cancelRenameBtn.addEventListener('click', () => this.hideRenameModal());
+        this.confirmRenameBtn.addEventListener('click', () => this.renameCurrentConversation());
+    }
+
+    /* ===================== */
+    /* === 主题模式相关方法 === */
+    /* ===================== */
+
+    /**
+     * 检查用户偏好暗色模式
+     */
     checkDarkModePreference() {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const savedMode = localStorage.getItem('darkMode') === 'true';
@@ -138,8 +213,10 @@ class ChatApp {
         });
     }
 
-    // 切换暗色模式
-    // 更新 toggleDarkMode 方法
+    /**
+     * 切换暗色模式
+     * @param {boolean} force - 强制设置为指定模式
+     */
     toggleDarkMode(force = false) {
         if (force !== undefined) {
             this.isDarkMode = force;
@@ -164,7 +241,13 @@ class ChatApp {
         }
     }
 
-    // 切换侧边栏
+    /* ===================== */
+    /* === 侧边栏相关方法 === */
+    /* ===================== */
+
+    /**
+     * 切换侧边栏显示/隐藏
+     */
     toggleSidebar() {
         this.sidebar.classList.toggle('hidden');
         
@@ -185,18 +268,13 @@ class ChatApp {
         }
     }
 
-    // 添加清除设置方法
-    clearSettings() {
-        if (confirm('确定要清除所有设置和会话历史吗？此操作不可撤销。')) {
-            localStorage.clear();
-            this.loadSettings();
-            this.loadConversations();
-            this.createNewChat();
-            this.showToast('已清除所有设置和会话历史');
-        }
-    }
+    /* ===================== */
+    /* === 消息处理相关方法 === */
+    /* ===================== */
 
-    // 发送消息
+    /**
+     * 发送消息
+     */
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
@@ -249,110 +327,30 @@ class ChatApp {
             
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
-        } // 在 app.js 的 sendMessage 方法中更新错误处理
-            catch (error) {
-                console.error('发送消息失败:', error);
-                let errorMsg = `❌ 错误: ${error.message}`;
-                if (error.message.includes('Failed to fetch')) {
-                    errorMsg = '❌ 网络请求失败，请检查:\n';
-                    errorMsg += '1. API密钥是否正确\n';
-                    errorMsg += '2. API地址是否正确\n';
-                    errorMsg += '3. 网络连接是否正常\n';
-                    if (this.apiManager.currentModel === 'ollama') {
-                        errorMsg += '4. Ollama服务是否已启动\n';
-                    }
-                    errorMsg += `\n详细错误: ${error.message}`;
+        } catch (error) {
+            console.error('发送消息失败:', error);
+            let errorMsg = `❌ 错误: ${error.message}`;
+            if (error.message.includes('Failed to fetch')) {
+                errorMsg = '❌ 网络请求失败，请检查:\n';
+                errorMsg += '1. API密钥是否正确\n';
+                errorMsg += '2. API地址是否正确\n';
+                errorMsg += '3. 网络连接是否正常\n';
+                if (this.apiManager.currentModel === 'ollama') {
+                    errorMsg += '4. Ollama服务是否已启动\n';
                 }
-                this.updateMessage(loadingId, errorMsg);
+                errorMsg += `\n详细错误: ${error.message}`;
             }
-    }
-
-    // 处理文件上传
-    async handleFileUpload(e) {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        // 重置文件输入
-        this.fileUpload.value = '';
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            
-            // 显示文件上传提示
-            this.fileUploadHint.textContent = `正在上传: ${file.name}...`;
-            this.fileUploadHint.style.display = 'block';
-            
-            try {
-                const content = await this.readFileContent(file);
-                this.addMessage('user', `📄 上传了文件: ${file.name} (${this.formatFileSize(file.size)})`);
-                
-                const loadingId = this.addMessage('assistant', '', true);
-                const loadingDiv = document.getElementById(loadingId);
-                loadingDiv.querySelector('.message-content').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
-                
-                const response = await this.apiManager.sendMessage(`请处理以下文件内容: \n${content}`);
-                this.updateMessage(loadingId, response);
-                
-                this.updateConversationHistory();
-            } catch (error) {
-                this.addMessage('system', `❌ 上传文件失败: ${file.name} (${error.message})`);
-            } finally {
-                this.fileUploadHint.style.display = 'none';
-            }
+            this.updateMessage(loadingId, errorMsg);
         }
     }
 
-    // 读取文件内容
-    readFileContent(file) {
-        return new Promise((resolve, reject) => {
-            // 简单文件类型验证
-            const allowedTypes = [
-                'text/plain', 
-                'application/pdf', 
-                'text/markdown',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-            ];
-            
-            if (!allowedTypes.includes(file.type) && 
-                !file.name.match(/\.(txt|md|pdf|docx|xlsx|pptx)$/i)) {
-                return reject(new Error('不支持的文件类型'));
-            }
-            
-            // 限制文件大小 (5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                return reject(new Error('文件大小超过5MB限制'));
-            }
-            
-            const reader = new FileReader();
-            
-            reader.onload = (event) => {
-                // 限制内容长度 (前5000个字符)
-                resolve(event.target.result.substring(0, 5000));
-            };
-            
-            reader.onerror = () => {
-                reject(new Error('读取文件失败'));
-            };
-            
-            if (file.type === 'application/pdf') {
-                // PDF文件处理 (简化版，实际应该使用PDF.js提取文本)
-                reader.readAsDataURL(file);
-            } else {
-                reader.readAsText(file);
-            }
-        });
-    }
-
-    // 格式化文件大小
-    formatFileSize(bytes) {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-
-    // 添加消息到聊天界面
+    /**
+     * 添加消息到聊天界面
+     * @param {string} role - 消息角色 (user/assistant)
+     * @param {string} content - 消息内容
+     * @param {boolean} isLoading - 是否为加载状态
+     * @returns {string} 消息ID
+     */
     addMessage(role, content, isLoading = false) {
         const messageId = `msg_${++this.messageIdCounter}`;
         const messageDiv = document.createElement('div');
@@ -414,7 +412,11 @@ class ChatApp {
         return messageId;
     }
 
-    // 更新消息内容
+    /**
+     * 更新消息内容
+     * @param {string} messageId - 消息ID
+     * @param {string} content - 新内容
+     */
     updateMessage(messageId, content) {
         const messageDiv = document.getElementById(messageId);
         if (messageDiv) {
@@ -423,7 +425,10 @@ class ChatApp {
         }
     }
 
-    // 编辑消息
+    /**
+     * 编辑消息
+     * @param {string} messageId - 消息ID
+     */
     editMessage(messageId) {
         const messageDiv = document.getElementById(messageId);
         if (!messageDiv) return;
@@ -468,7 +473,10 @@ class ChatApp {
         textarea.focus();
     }
 
-    // 复制到剪贴板
+    /**
+     * 复制文本到剪贴板
+     * @param {string} text - 要复制的文本
+     */
     copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
             this.showToast('已复制到剪贴板');
@@ -478,7 +486,10 @@ class ChatApp {
         });
     }
 
-    // 显示临时提示
+    /**
+     * 显示临时提示
+     * @param {string} message - 提示消息
+     */
     showToast(message) {
         const toast = document.createElement('div');
         toast.className = 'toast';
@@ -494,12 +505,120 @@ class ChatApp {
         }, 100);
     }
 
-    // 滚动到底部
+    /**
+     * 滚动聊天区域到底部
+     */
     scrollToBottom() {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    // 创建新对话
+    /* ===================== */
+    /* === 文件处理相关方法 === */
+    /* ===================== */
+
+    /**
+     * 处理文件上传
+     * @param {Event} e - 文件上传事件
+     */
+    async handleFileUpload(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // 重置文件输入
+        this.fileUpload.value = '';
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 显示文件上传提示
+            this.fileUploadHint.textContent = `正在上传: ${file.name}...`;
+            this.fileUploadHint.style.display = 'block';
+            
+            try {
+                const content = await this.readFileContent(file);
+                this.addMessage('user', `📄 上传了文件: ${file.name} (${this.formatFileSize(file.size)})`);
+                
+                const loadingId = this.addMessage('assistant', '', true);
+                const loadingDiv = document.getElementById(loadingId);
+                loadingDiv.querySelector('.message-content').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+                
+                const response = await this.apiManager.sendMessage(`请处理以下文件内容: \n${content}`);
+                this.updateMessage(loadingId, response);
+                
+                this.updateConversationHistory();
+            } catch (error) {
+                this.addMessage('system', `❌ 上传文件失败: ${file.name} (${error.message})`);
+            } finally {
+                this.fileUploadHint.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * 读取文件内容
+     * @param {File} file - 文件对象
+     * @returns {Promise<string>} 文件内容
+     */
+    readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            // 简单文件类型验证
+            const allowedTypes = [
+                'text/plain', 
+                'application/pdf', 
+                'text/markdown',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            ];
+            
+            if (!allowedTypes.includes(file.type) && 
+                !file.name.match(/\.(txt|md|pdf|docx|xlsx|pptx)$/i)) {
+                return reject(new Error('不支持的文件类型'));
+            }
+            
+            // 限制文件大小 (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                return reject(new Error('文件大小超过5MB限制'));
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = (event) => {
+                // 限制内容长度 (前5000个字符)
+                resolve(event.target.result.substring(0, 5000));
+            };
+            
+            reader.onerror = () => {
+                reject(new Error('读取文件失败'));
+            };
+            
+            if (file.type === 'application/pdf') {
+                // PDF文件处理 (简化版，实际应该使用PDF.js提取文本)
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
+        });
+    }
+
+    /**
+     * 格式化文件大小
+     * @param {number} bytes - 文件大小(字节)
+     * @returns {string} 格式化后的文件大小
+     */
+    formatFileSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    /* ===================== */
+    /* === 对话管理相关方法 === */
+    /* ===================== */
+
+    /**
+     * 创建新对话
+     */
     createNewChat() {
         // 如果当前对话有消息但未保存，先保存
         if (this.chatMessages.children.length > 0 && !this.currentConversationId) {
@@ -514,7 +633,11 @@ class ChatApp {
         this.currentConversationId = Date.now().toString();
     }
 
-    // 保存当前对话
+    /**
+     * 保存当前对话
+     * @param {string} title - 对话标题
+     * @param {boolean} autoSave - 是否为自动保存
+     */
     saveCurrentConversation(title = '', autoSave = false) {
         const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
             return {
@@ -564,7 +687,9 @@ class ChatApp {
         this.chatTitle.textContent = conversation.title;
     }
 
-    // 加载对话列表
+    /**
+     * 加载对话列表
+     */
     loadConversations() {
         this.chatList.innerHTML = '';
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
@@ -577,7 +702,9 @@ class ChatApp {
             });
     }
 
-    // 过滤对话列表
+    /**
+     * 过滤对话列表
+     */
     filterConversations() {
         const searchTerm = this.chatSearchInput.value.toLowerCase();
         const items = this.chatList.querySelectorAll('.conversation-item');
@@ -588,7 +715,11 @@ class ChatApp {
         });
     }
 
-    // 创建对话列表项
+    /**
+     * 创建对话列表项
+     * @param {Object} conv - 对话对象
+     * @returns {HTMLElement} 对话列表项元素
+     */
     createConversationItem(conv) {
         const item = document.createElement('div');
         item.className = 'conversation-item';
@@ -617,7 +748,10 @@ class ChatApp {
         return item;
     }
 
-    // 加载指定对话
+    /**
+     * 加载指定对话
+     * @param {string} id - 对话ID
+     */
     loadConversation(id) {
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
         const conversation = conversations.find(c => c.id === id);
@@ -644,7 +778,9 @@ class ChatApp {
         }
     }
 
-    // 更新对话历史
+    /**
+     * 更新对话历史
+     */
     updateConversationHistory() {
         if (!this.currentConversationId) return;
 
@@ -663,7 +799,9 @@ class ChatApp {
         }
     }
 
-    // 显示重命名模态框
+    /**
+     * 显示重命名模态框
+     */
     showRenameModal() {
         if (!this.currentConversationId) {
             this.showToast('请先创建一个对话');
@@ -675,12 +813,16 @@ class ChatApp {
         this.newChatTitleInput.focus();
     }
 
-    // 隐藏重命名模态框
+    /**
+     * 隐藏重命名模态框
+     */
     hideRenameModal() {
         this.renameModal.style.display = 'none';
     }
 
-    // 重命名当前对话
+    /**
+     * 重命名当前对话
+     */
     renameCurrentConversation() {
         const newTitle = this.newChatTitleInput.value.trim();
         if (!newTitle) {
@@ -700,7 +842,9 @@ class ChatApp {
         }
     }
 
-    // 删除当前对话
+    /**
+     * 删除当前对话
+     */
     deleteCurrentConversation() {
         if (!this.currentConversationId) {
             this.showToast('当前没有可删除的对话');
@@ -713,7 +857,10 @@ class ChatApp {
         }
     }
 
-    // 删除指定对话
+    /**
+     * 删除指定对话
+     * @param {string} id - 对话ID
+     */
     deleteConversation(id) {
         const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
         const newConversations = conversations.filter(c => c.id !== id);
@@ -727,7 +874,10 @@ class ChatApp {
         this.showToast('对话已删除');
     }
 
-    // 导出对话
+    /**
+     * 导出对话
+     * @param {string} format - 导出格式 (markdown/pdf/text)
+     */
     exportConversation(format) {
         if (!this.currentConversationId) {
             this.showToast('没有可导出的对话');
@@ -759,7 +909,11 @@ class ChatApp {
         }
     }
 
-    // 下载文件
+    /**
+     * 下载文件
+     * @param {string} filename - 文件名
+     * @param {string} content - 文件内容
+     */
     downloadFile(filename, content) {
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -772,7 +926,13 @@ class ChatApp {
         URL.revokeObjectURL(url);
     }
 
-    // 更新可用模型选项
+    /* ===================== */
+    /* === 配置管理相关方法 === */
+    /* ===================== */
+
+    /**
+     * 更新可用模型选项
+     */
     updateAvailableModels() {
         const selectedAPI = this.modelSelect.value;
         const availableModels = this.apiManager.getAvailableModelsForAPI(selectedAPI);
@@ -786,7 +946,10 @@ class ChatApp {
         });
     }
 
-    // 配置变更处理
+    /**
+     * 处理配置变更
+     * @param {Event} e - 输入事件
+     */
     handleConfigChange(e) {
         const { id, value } = e.target;
         if (id === 'api-key') this.apiManager.setApiKey(value);
@@ -795,7 +958,9 @@ class ChatApp {
         this.saveSettings();
     }
 
-    // 保存配置
+    /**
+     * 保存配置
+     */
     saveSettings() {
         const settings = {
             apiKey: this.apiKeyInput.value,
@@ -807,7 +972,9 @@ class ChatApp {
         localStorage.setItem('ai_chat_settings', JSON.stringify(settings));
     }
 
-    // 加载配置
+    /**
+     * 加载配置
+     */
     loadSettings() {
         try {
             const settings = JSON.parse(localStorage.getItem('ai_chat_settings') || '{}');
@@ -825,6 +992,19 @@ class ChatApp {
             this.updateAvailableModels();
         } catch (error) {
             console.error('加载配置失败:', error);
+        }
+    }
+
+    /**
+     * 清除所有设置和会话历史
+     */
+    clearSettings() {
+        if (confirm('确定要清除所有设置和会话历史吗？此操作不可撤销。')) {
+            localStorage.clear();
+            this.loadSettings();
+            this.loadConversations();
+            this.createNewChat();
+            this.showToast('已清除所有设置和会话历史');
         }
     }
 }
