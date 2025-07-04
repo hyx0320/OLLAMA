@@ -20,64 +20,341 @@ class ChatApp {
         this.loadSettings();
         this.loadConversations();
         this.updateAvailableModels();
-        this.checkDarkModePreference(); // 强制设置为白天模式
+        this.initializeThemeCustomizer();
 
         // 初始化邀请码相关元素
         this.inviteModal = document.getElementById('invite-modal');
         this.inviteCodeInput = document.getElementById('invite-code');
         this.submitInviteBtn = document.getElementById('submit-invite-btn');
         this.inviteError = document.getElementById('invite-error');
+        this.tierHint = document.querySelector('.tier-hint');
 
         // 绑定邀请码验证事件
         this.bindInviteEvents();
-        // 检查是否已通过验证
-        this.checkInvitation();
+        
+        // 检查授权状态
+        this.checkAuthorization();
     }
-    // 添加邀请码事件绑定方法
+    // 检查授权状态
+    checkAuthorization() {
+        const authData = JSON.parse(localStorage.getItem('authData'));
+        
+        // 顶级版验证（永久有效）
+        if (authData?.tier === 'premium') {
+        return; // 直接放行
+        }
+        
+        // 试用版验证（检查是否在3天内）
+        if (authData?.tier === 'trial') {
+        const isTrialValid = Date.now() - authData.timestamp < 3 * 24 * 60 * 60 * 1000;
+        if (isTrialValid) return;
+        }
+        
+        // 普通版/未授权用户显示邀请码输入
+        this.showInviteModal();
+    }
+
+     /* ===================== */
+    /* === 邀请码相关方法 === */
+    /* ===================== */
+
+    /**
+     * 绑定邀请码事件
+     */
     bindInviteEvents() {
         this.submitInviteBtn.addEventListener('click', () => this.verifyInvitationCode());
         this.inviteCodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.verifyInvitationCode();
-            }
+            if (e.key === 'Enter') this.verifyInvitationCode();
+        });
+        
+        // 输入时实时显示邀请码类型
+        this.inviteCodeInput.addEventListener('input', () => {
+            const code = this.inviteCodeInput.value.trim();
+            const tier = this.apiManager.validateInvitationCode(code);
+            this.updateTierHint(tier);
         });
     }
 
-    // 检查邀请码状态
-    checkInvitation() {
-        const isVerified = sessionStorage.getItem('inviteVerified') === 'true'; // 改用 sessionStorage
-        if (!isVerified) {
-            // 显示邀请码输入框
-            document.getElementById('invite-modal').classList.add('show');
-            document.querySelector('.app-container').style.display = 'none';
+    /**
+     * 更新邀请码类型提示
+     */
+    updateTierHint(tier) {
+        // 重置所有提示
+        this.tierHint.querySelectorAll('span').forEach(span => {
+            span.style.display = 'none';
+        });
+        
+        if (tier) {
+            const tierElement = this.tierHint.querySelector(`[data-tier="${tier}"]`);
+            if (tierElement) tierElement.style.display = 'inline-block';
         }
     }
 
-    // 验证邀请码
+    /**
+     * 检查授权状态
+     */
+    checkAuthorization() {
+        const authData = this.getAuthData();
+        
+        // 顶级版验证（永久有效）
+        if (authData?.tier === 'premium') {
+            this.hideInviteModal();
+            return;
+        }
+        
+        // 试用版验证（检查是否在3天内）
+        if (authData?.tier === 'trial') {
+            const isTrialValid = Date.now() - authData.timestamp < 3 * 24 * 60 * 60 * 1000;
+            if (isTrialValid) {
+                this.hideInviteModal();
+                this.showToast(`试用版剩余时间: ${this.formatRemainingTime(authData.timestamp)}`);
+                return;
+            }
+        }
+        
+        // 普通版检查会话存储
+        if (authData?.tier === 'standard') {
+            this.hideInviteModal();
+            return;
+        }
+        
+        // 未授权用户显示邀请码输入
+        this.showInviteModal();
+    }
+
+    /**
+     * 获取授权数据（兼容localStorage和sessionStorage）
+     */
+    getAuthData() {
+        return JSON.parse(
+            localStorage.getItem('authData') || 
+            sessionStorage.getItem('authData') || 
+            'null'
+        );
+    }
+
+    /**
+     * 验证邀请码
+     */
     verifyInvitationCode() {
         const code = this.inviteCodeInput.value.trim();
         if (!code) {
-            this.inviteError.textContent = '请输入邀请码';
-            this.inviteError.style.display = 'block';
+            this.showError("请输入邀请码");
             return;
         }
 
-        if (this.apiManager.validateInvitationCode(code)) {
-            // 验证通过，使用 sessionStorage 存储
-            sessionStorage.setItem('inviteVerified', 'true'); // 改用 sessionStorage
-            document.getElementById('invite-modal').classList.remove('show');
-            document.querySelector('.app-container').style.display = 'flex';
-            this.showToast('验证成功，欢迎使用！');
-        } else {
-            // 验证失败
-            this.inviteError.textContent = '邀请码无效，请重试';
-            this.inviteError.style.display = 'block';
+        const tier = this.apiManager.validateInvitationCode(code);
+        if (!tier) {
+            this.showError("邀请码无效");
+            return;
         }
+
+        // 存储授权信息
+        const authData = {
+            tier,
+            timestamp: Date.now(),
+            code
+        };
+        
+        // 根据等级采用不同存储策略
+        if (tier === 'premium') {
+            localStorage.setItem('authData', JSON.stringify(authData));
+            this.showToast('🎉 已激活顶级版，永久有效');
+        } 
+        else if (tier === 'trial') {
+            localStorage.setItem('authData', JSON.stringify(authData));
+            this.showToast(`⏳ 试用版已激活，剩余时间: ${this.formatRemainingTime(Date.now())}`);
+        }
+        else { // standard
+            sessionStorage.setItem('authData', JSON.stringify(authData));
+            this.showToast('🔑 普通版已激活，当前会话有效');
+        }
+        
+        this.hideInviteModal();
+    }
+
+    /**
+     * 格式化剩余时间
+     */
+    formatRemainingTime(startTime) {
+        const remaining = 3 * 24 * 60 * 60 * 1000 - (Date.now() - startTime);
+        const hours = Math.floor(remaining / (60 * 60 * 1000));
+        return `${hours}小时`;
+    }
+
+    /**
+     * 显示错误信息
+     */
+    showError(message) {
+        this.inviteError.textContent = message;
+        this.inviteError.style.display = 'block';
+        setTimeout(() => {
+            this.inviteError.style.display = 'none';
+        }, 3000);
+    }
+
+    /**
+     * 显示邀请码模态框
+     */
+    showInviteModal() {
+        this.inviteModal.classList.add('show');
+        document.querySelector('.app-container').style.display = 'none';
+        this.inviteCodeInput.focus();
+    }
+
+    /**
+     * 隐藏邀请码模态框
+     */
+    hideInviteModal() {
+        this.inviteModal.classList.remove('show');
+        document.querySelector('.app-container').style.display = 'flex';
+        this.inviteCodeInput.value = '';
     }
 
     /* ===================== */
-    /* === 初始化相关方法 === */
+    /* === 主题定制相关方法 === */
     /* ===================== */
+
+    /**
+     * 初始化主题定制功能
+     */
+    initializeThemeCustomizer() {
+        this.themeSettings = {
+            primaryColor: '#2196f3',
+            bgColor: '#ffffff',
+            sidebarColor: '#ffffff',
+            messageColor: '#f5f5f5'
+        };
+        
+        this.primaryColorInput = document.getElementById('primary-color');
+        this.bgColorInput = document.getElementById('bg-color');
+        this.sidebarColorInput = document.getElementById('sidebar-color');
+        this.messageColorInput = document.getElementById('message-color');
+        this.applyThemeBtn = document.getElementById('apply-theme-btn');
+        this.resetThemeBtn = document.getElementById('reset-theme-btn');
+        
+        this.bindThemeEvents();
+        this.loadThemeSettings();
+    }
+
+    /**
+     * 绑定主题事件
+     */
+    bindThemeEvents() {
+        this.applyThemeBtn.addEventListener('click', () => this.applyCustomTheme());
+        this.resetThemeBtn.addEventListener('click', () => this.resetDefaultTheme());
+    }
+
+    /**
+     * 应用自定义主题
+     */
+    applyCustomTheme() {
+        this.themeSettings = {
+            primaryColor: this.primaryColorInput.value,
+            bgColor: this.bgColorInput.value,
+            sidebarColor: this.sidebarColorInput.value,
+            messageColor: this.messageColorInput.value
+        };
+        
+        this.updateThemeVariables();
+        this.saveThemeSettings();
+        this.showToast('主题已应用');
+    }
+
+    /**
+     * 重置为默认主题
+     */
+    resetDefaultTheme() {
+        this.themeSettings = {
+            primaryColor: '#2196f3',
+            bgColor: '#ffffff',
+            sidebarColor: '#ffffff',
+            messageColor: '#f5f5f5'
+        };
+        
+        this.primaryColorInput.value = this.themeSettings.primaryColor;
+        this.bgColorInput.value = this.themeSettings.bgColor;
+        this.sidebarColorInput.value = this.themeSettings.sidebarColor;
+        this.messageColorInput.value = this.themeSettings.messageColor;
+        
+        this.updateThemeVariables();
+        this.saveThemeSettings();
+        this.showToast('已重置为默认主题');
+    }
+
+    /**
+     * 更新CSS变量
+     */
+    updateThemeVariables() {
+        document.documentElement.style.setProperty('--primary-color', this.themeSettings.primaryColor);
+        document.documentElement.style.setProperty('--primary-hover', this.darkenColor(this.themeSettings.primaryColor, 20));
+        document.documentElement.style.setProperty('--bg-color', this.themeSettings.bgColor);
+        document.documentElement.style.setProperty('--bg-secondary', this.lightenColor(this.themeSettings.bgColor, 5));
+        
+        // 侧边栏特定样式
+        document.querySelector('.sidebar').style.backgroundColor = this.themeSettings.sidebarColor;
+        
+        // 消息区特定样式
+        document.querySelector('.chat-messages').style.background = `linear-gradient(to bottom, ${this.themeSettings.bgColor}, ${this.themeSettings.messageColor})`;
+    }
+
+    /**
+     * 保存主题设置
+     */
+    saveThemeSettings() {
+        localStorage.setItem('ai_chat_theme', JSON.stringify(this.themeSettings));
+    }
+
+    /**
+     * 加载主题设置
+     */
+    loadThemeSettings() {
+        const savedTheme = localStorage.getItem('ai_chat_theme');
+        if (savedTheme) {
+            this.themeSettings = JSON.parse(savedTheme);
+            
+            this.primaryColorInput.value = this.themeSettings.primaryColor;
+            this.bgColorInput.value = this.themeSettings.bgColor;
+            this.sidebarColorInput.value = this.themeSettings.sidebarColor;
+            this.messageColorInput.value = this.themeSettings.messageColor;
+            
+            this.updateThemeVariables();
+        }
+    }
+
+    /**
+     * 颜色变暗
+     */
+    darkenColor(color, percent) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) - amt;
+        const G = (num >> 8 & 0x00FF) - amt;
+        const B = (num & 0x0000FF) - amt;
+        return '#' + (
+            0x1000000 +
+            (R < 0 ? 0 : R) * 0x10000 +
+            (G < 0 ? 0 : G) * 0x100 +
+            (B < 0 ? 0 : B)
+        ).toString(16).slice(1);
+    }
+
+    /**
+     * 颜色变亮
+     */
+    lightenColor(color, percent) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (
+            0x1000000 +
+            (R > 255 ? 255 : R) * 0x10000 +
+            (G > 255 ? 255 : G) * 0x100 +
+            (B > 255 ? 255 : B)
+        ).toString(16).slice(1);
+    }
 
     /**
      * 初始化DOM元素引用
@@ -198,11 +475,7 @@ class ChatApp {
             this.deepThinkingBtn.classList.toggle('active');
         });
         
-        //调试
-        this.darkModeBtn.addEventListener('click', () => {
-            console.log('Dark mode button clicked');
-            this.toggleDarkMode();
-        });
+
         this.exportChatBtn.addEventListener('click', () => this.exportConversation('markdown'));
         
         // 导出格式选择
@@ -254,33 +527,8 @@ class ChatApp {
     /* === 主题模式相关方法 === */
     /* ===================== */
 
-    /**
-     * 检查用户偏好暗色模式（默认白天模式）
-     */
-    checkDarkModePreference() {
-        this.isDarkMode = false;
-        document.body.removeAttribute('data-theme');
-        this.darkModeBtn.innerHTML = '<span>🌙</span><span>夜间模式</span>';
-    }
 
-    /**
-     * 切换暗色模式（不保存偏好）
-     */
-    //调试
-    toggleDarkMode() {
-        this.isDarkMode = !this.isDarkMode;
-        console.log('isDarkMode toggled to:', this.isDarkMode);
-        
-        if (this.isDarkMode) {
-            document.body.setAttribute('data-theme', 'dark');
-            console.log('data-theme attribute set to "dark"');
-            this.darkModeBtn.innerHTML = '<span>☀️</span><span>日间模式</span>';
-        } else {
-            document.body.removeAttribute('data-theme');
-            console.log('data-theme attribute removed');
-            this.darkModeBtn.innerHTML = '<span>🌙</span><span>夜间模式</span>';
-        }
-    }
+
 
     /* ===================== */
     /* === 侧边栏相关方法 === */

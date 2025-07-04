@@ -10,14 +10,14 @@ class APIManager {
             kimi: ['moonshot-v1-8k'],
             ollama: ['deepseek-r1:14b', 'qwen3:14b','deepseek-r1:7b', 'qwen2.5vl:7b','deepseek-r1:1.5b']
         };
-        // 添加邀请码列表
-        this.invitationCodes = [
-            "AI2024", 
-            "CHATBOT", 
-            "WELCOME123",
-            "OPENAI",
-            "DEEPSEEK"
-        ];
+        // 多级邀请码定义
+        this.invitationCodes = {
+        trial: ["TRY123", "TEST456"],  // 试用版（3天有效）
+        standard: ["STD789", "NORMAL"], // 普通版（会话级）
+        premium: ["VIP666", "PRO888"]   // 顶级版（永久有效）
+        };
+        // 存储当前用户等级
+        this.userTier = null;
     }
 
     // 设置模型
@@ -330,8 +330,14 @@ class APIManager {
     getAvailableModelsForAPI(api) {
         return this.availableModels[api] || [];
     }
-    // 添加邀请码验证方法
-    validateInvitationCode(code) {
-        return this.invitationCodes.includes(code.toUpperCase());
+    // 验证邀请码并返回等级
+  validateInvitationCode(code) {
+       for (const [tier, codes] of Object.entries(this.invitationCodes)) {
+        if (codes.includes(code.toUpperCase())) {
+            this.userTier = tier;
+            return tier;
+        }
+        }
+        return null;
     }
 }

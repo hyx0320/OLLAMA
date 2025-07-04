@@ -46,7 +46,29 @@
                     <!-- 历史对话列表 -->
                 </div>
             </div>
-            
+            <div class="theme-customizer">
+                <h3>主题颜色</h3>
+                <div class="color-picker-group">
+                    <div class="color-picker">
+                        <label for="primary-color">主色</label>
+                        <input type="color" id="primary-color" value="#2196f3">
+                    </div>
+                    <div class="color-picker">
+                        <label for="bg-color">背景色</label>
+                        <input type="color" id="bg-color" value="#ffffff">
+                    </div>
+                    <div class="color-picker">
+                        <label for="sidebar-color">侧边栏</label>
+                        <input type="color" id="sidebar-color" value="#ffffff">
+                    </div>
+                    <div class="color-picker">
+                        <label for="message-color">消息区</label>
+                        <input type="color" id="message-color" value="#f5f5f5">
+                    </div>
+                </div>
+                <button id="apply-theme-btn" class="apply-theme-btn">应用主题</button>
+                <button id="reset-theme-btn" class="reset-theme-btn">重置默认</button>
+            </div>
             <div class="sidebar-footer">
                 <div class="api-config">
                     <input type="text" id="api-key" placeholder="API Key (sk-...)">
@@ -55,10 +77,6 @@
                 </div>
                 
                 <div class="sidebar-actions">
-                    <button id="dark-mode-btn" class="dark-mode-btn">
-                        <span>🌙</span>
-                        <span>夜间模式</span>
-                    </button>
                     <button id="clear-settings-btn" class="clear-settings-btn">
                         <span>🗑️</span>
                         <span>清除设置</span>
@@ -131,14 +149,17 @@
     <!-- index.html 修改部分 -->
     <!-- 在 </body> 标签前添加 -->
     <div class="modal" id="invite-modal">
-        <div class="modal-content invite-modal-content">
+        <div class="modal-content">
             <h3>请输入邀请码</h3>
-            <p class="invite-description">请输入有效的邀请码以使用本应用</p>
-            <input type="text" id="invite-code" class="invite-code-input" placeholder="输入邀请码">
-            <div class="modal-actions invite-actions">
-                <button id="submit-invite-btn" class="submit-invite-btn">提交</button>
+            <p class="tier-hint">
+                <span data-tier="trial">试用版：3天体验</span> |
+                <span data-tier="standard">普通版：会话有效</span> |
+                <span data-tier="premium">顶级版：永久有效</span>
+            </p>
+            <input type="text" id="invite-code" placeholder="输入邀请码">
+            <div class="modal-actions">
+                <button id="submit-invite-btn">验证</button>
             </div>
-            <p id="invite-error" class="invite-error">邀请码无效，请重试</p>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
