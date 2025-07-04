@@ -1,177 +1,193 @@
-# 本地AI聊天助手使用指南（增强版）
+# AI智能助手使用指南（超详细版）
 
-## 🔧 深度配置指南
+## 目录
+1. [基础功能介绍](#基础功能介绍)
+2. [API配置详解](#api配置详解)
+3. [模型选择指南](#模型选择指南)
+4. [邀请码系统说明](#邀请码系统说明)
+5. [主题定制教程](#主题定制教程)
+6. [文件上传功能](#文件上传功能)
+7. [常见问题解答](#常见问题解答)
 
-### 1. 自定义Ollama模型
-如果你使用的Ollama模型不在默认列表中，可以通过以下两种方式添加：
+---
 
-#### 方法一：修改API配置文件（推荐）
+## 基础功能介绍
+
+### 1. 界面布局
+- **左侧侧边栏**：包含会话列表、模型选择和设置
+- **中间聊天区**：显示对话内容
+- **底部输入框**：发送消息和功能按钮
+
+### 2. 基本操作
+- **发送消息**：输入文字后按Enter或点击"发送"按钮
+- **新建对话**：点击侧边栏的"+ 新对话"按钮
+- **删除对话**：在会话列表点击🗑️图标
+
+---
+
+## API配置详解
+
+### 1. 配置位置
+文件：`api.js` → `APIManager`类构造函数（第3-20行）
+
+### 2. 支持的API平台
+| 平台 | 默认地址 | 配置文件位置 |
+|------|---------|------------|
+| 通义千问 | `https://dashscope.aliyuncs.com` | 第120行 |
+| DeepSeek | `https://api.deepseek.com` | 第150行 |
+| Kimi | `https://api.moonshot.cn` | 第180行 |
+| Ollama | `http://localhost:11434` | 第5行 |
+
+### 3. 配置步骤
+1. 打开网页界面
+2. 在侧边栏底部找到"API配置"区域
+3. 输入对应平台的：
+   - API Key（必填）
+   - API地址（可选，留空使用默认）
+   - Ollama地址（本地模型用）
+
+### 4. 修改默认地址
+如需修改默认API地址：
 1. 打开`api.js`文件
-2. 找到`availableModels`对象（约第7行）
-3. 在`ollama`数组中添加你的模型名称：
+2. 找到对应平台的URL设置（见上表）
+3. 修改引号内的地址
+
+---
+
+## 模型选择指南
+
+### 1. 可用模型列表
+文件：`api.js` → `availableModels`对象（第7-12行）
+
 ```javascript
 availableModels: {
-    ollama: [
-        'deepseek-r1:7b', 
-        'qwen2.5vl:7b',
-        '你的模型名称'  // 在此添加自定义模型
-    ]
+    qwen: ['qwen3-235b-a22b','qwen-turbo-2025-04-28','qwen-plus','qwen-turbo'],
+    deepseek: ['deepseek-chat'],
+    kimi: ['moonshot-v1-8k'],
+    ollama: ['deepseek-r1:14b', 'qwen3:14b','deepseek-r1:7b', 'qwen2.5vl:7b']
 }
 ```
 
-#### 方法二：直接修改模型调用参数
+### 2. 添加自定义模型
+以添加Ollama模型为例：
+1. 确保模型已通过`ollama pull`命令下载
+2. 编辑`api.js`文件
+3. 在`ollama`数组中添加你的模型名称
+4. 保存文件并刷新网页
+
+### 3. 切换模型
+1. 在侧边栏顶部找到模型选择下拉框
+2. 先选择API平台（如Ollama）
+3. 再选择具体模型
+
+---
+
+## 邀请码系统说明
+
+### 1. 功能说明
+文件：`api.js` → `invitationCodes`对象（第14-18行）
+
+```javascript
+invitationCodes: {
+    trial: ["TRY123", "TEST456"],  // 试用版（3天有效）
+    standard: ["STD789", "NORMAL"], // 普通版（会话级）
+    premium: ["VIP666", "PRO888"]   // 顶级版（永久有效）
+}
+```
+
+### 2. 修改邀请码
 1. 打开`api.js`文件
-2. 找到`sendToOllama`方法（约第200行）
-3. 修改`model`参数为你安装的模型名称：
+2. 找到`invitationCodes`对象
+3. 在各等级数组中添加/删除邀请码
+4. 保存文件并刷新网页
+
+### 3. 使用流程
+1. 首次打开会弹出邀请码输入框
+2. 输入有效邀请码后自动解锁对应功能
+3. 各等级区别：
+   - 试用版：3天有效期
+   - 普通版：仅当前浏览器会话有效
+   - 顶级版：永久有效（存储在localStorage）
+
+---
+
+## 主题定制教程
+
+### 1. 修改位置
+文件：`app.js` → `initializeThemeCustomizer`方法（约第200行）
+
+### 2. 自定义主题
+1. 在侧边栏底部找到"主题颜色"区域
+2. 使用颜色选择器调整：
+   - 主色（按钮/链接颜色）
+   - 背景色（主界面背景）
+   - 侧边栏颜色
+   - 消息区颜色
+3. 点击"应用主题"按钮
+
+### 3. 恢复默认
+点击"重置默认"按钮即可恢复初始主题
+
+---
+
+## 文件上传功能
+
+### 1. 支持格式
+文件：`app.js` → `readFileContent`方法（约第250行）
+
 ```javascript
-async sendToOllama(message) {
-    try {
-        const url = `${this.ollamaUrl}/api/chat`;
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: '你的模型名称', // 修改这里
-                messages: [{ role: 'user', content: message }],
-                stream: false
-            })
-        });
-        // ...其余代码不变
-    }
-}
-```
-
-### 2. 自定义API端点
-如需修改默认API地址，可以编辑`api.js`中的以下部分：
-
-```javascript
-// 通义千问默认端点（约第120行）
-const qwenUrl = this.apiUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-
-// DeepSeek默认端点（约第150行）
-const deepseekUrl = this.apiUrl || 'https://api.deepseek.com/v1/chat/completions';
-
-// Kimi默认端点（约第180行）
-const kimiUrl = this.apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-```
-
-### 3. 添加上传文件类型支持
-要增加支持的文件类型，修改`app.js`中的`handleFileUpload`方法：
-
-```javascript
-// 约第250行
 const allowedTypes = [
-    'text/plain', 
-    'application/pdf', 
-    'text/markdown',
-    'application/json'  // 新增支持JSON文件
-    // 可以继续添加其他MIME类型
+    'text/plain',       // .txt
+    'application/pdf',  // .pdf
+    'text/markdown',    // .md
+    // 其他支持的MIME类型
 ];
-
-// 同时修改对应的文件扩展名检查（约第255行）
-if (!allowedTypes.includes(file.type) && 
-    !['.txt', '.md', '.pdf', '.json'].some(ext => file.name.endsWith(ext))) {
-    alert('仅支持文本、PDF、Markdown和JSON文件');
-    return;
-}
 ```
 
-### 4. 调整消息长度限制
-修改消息长度限制（默认5000字符）：
+### 2. 添加新格式
+例如添加Word文档支持：
+1. 编辑`app.js`文件
+2. 在`allowedTypes`数组中添加：
+   ```javascript
+   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+   ```
+3. 在文件扩展名检查中添加：
+   ```javascript
+   !['.txt', '.md', '.pdf', '.docx'].some(ext => file.name.endsWith(ext))
+   ```
 
-```javascript
-// 在app.js中找到handleFileUpload方法（约第260行）
-const content = event.target.result.substring(0, 10000); // 修改为10000字符
+### 3. 使用注意
+- 文件大小限制：5MB
+- 内容长度限制：5000字符
 
-// 在api.js中调整各API的max_tokens参数（分别约第130/160/190行）
-max_tokens: 8000  // 原为5000
-```
+---
 
-## 🛠️ 高级功能配置
+## 常见问题解答
 
-### 1. 深度思考模式定制
-要调整思考步骤和时间间隔：
+### 1. Ollama连接失败
+✅ 解决方法：
+1. 确认Ollama服务已启动（终端输入`ollama serve`）
+2. 检查`api.js`中的`ollamaUrl`设置（第5行）
+3. 尝试在浏览器访问`http://localhost:11434`测试连接
 
-```javascript
-// 在api.js中找到sendMessageWithThinking方法（约第80行）
-const thinkingSteps = [
-    "正在分析问题背景...",      // 可修改步骤描述
-    "检索相关知识库...",
-    "构建初步解决方案...",
-    "验证方案可行性...", 
-    "优化最终回答..."
-];
+### 2. API返回错误
+✅ 排查步骤：
+1. 检查API Key是否正确
+2. 确认账号有足够额度
+3. 查看浏览器控制台错误信息（F12打开开发者工具）
 
-// 修改思考间隔时间（毫秒）
-await new Promise(resolve => setTimeout(resolve, 1000));  // 原为800ms
-```
+### 3. 界面显示异常
+✅ 解决方法：
+1. 尝试清除浏览器缓存
+2. 检查`style.css`文件是否正常加载
+3. 重置主题设置
 
-### 2. 联网搜索增强配置
-调整各平台的搜索参数：
+### 4. 如何备份聊天记录
+✅ 操作步骤：
+1. 使用"导出对话"功能
+2. 选择导出格式（推荐Markdown）
+3. 或直接备份浏览器localStorage中的`conversations`数据
 
-```javascript
-// 通义千问搜索参数（约第135行）
-web_search: {
-    enable: true,
-    search_result: true,
-    max_results: 8  // 增加结果数量
-}
+---
 
-// DeepSeek搜索参数（约第165行）
-web_search: {
-    search: true,
-    max_results: 5,  // 原为3
-    enhanced: true
-}
-```
-
-## 💾 数据管理
-
-### 1. 修改本地存储方式
-默认使用localStorage，如需改用sessionStorage：
-
-```javascript
-// 在app.js中找到所有localStorage的引用（约第350/380行等）
-localStorage.setItem → sessionStorage.setItem
-localStorage.getItem → sessionStorage.getItem
-localStorage.removeItem → sessionStorage.removeItem
-```
-
-### 2. 导出/导入会话数据
-添加以下代码到`app.js`可实现数据导出：
-
-```javascript
-// 新增导出方法
-function exportConversations() {
-    const data = localStorage.getItem('conversations');
-    const blob = new Blob([data], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chat_backup.json';
-    a.click();
-}
-
-// 新增导入方法
-function importConversations(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            JSON.parse(e.target.result);
-            localStorage.setItem('conversations', e.target.result);
-            alert('导入成功！');
-        } catch {
-            alert('文件格式错误');
-        }
-    };
-    reader.readAsText(file);
-}
-```
-
-## ⚠️ 重要提醒
-1. 修改代码前建议先备份原文件
-2. 每次修改后需刷新浏览器才能生效
-3. 复杂的模型可能需要更多内存资源
-4. 部分API可能有调用频率限制
-
-希望这些高级配置指南能帮助你更好地定制AI聊天助手！如需进一步帮助，请参考项目文档或联系开发者。
+> 💡 提示：所有修改后都需要刷新浏览器才能生效！建议修改前备份原始文件。
