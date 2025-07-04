@@ -5,11 +5,19 @@ class APIManager {
         this.apiUrl = '';
         this.ollamaUrl = 'http://localhost:11434';
         this.availableModels = {
-            qwen: ['qwen3-235b-a22b'],
+            qwen: ['qwen3-235b-a22b','qwen-turbo-2025-04-28','qwen-plus','qwen-turbo'],
             deepseek: ['deepseek-chat'],
             kimi: ['moonshot-v1-8k'],
-            ollama: ['deepseek-r1:14b','deepseek-r1:7b', 'qwen2.5vl:7b']
+            ollama: ['deepseek-r1:14b', 'qwen3:14b','deepseek-r1:7b', 'qwen2.5vl:7b','deepseek-r1:1.5b']
         };
+        // 添加邀请码列表
+        this.invitationCodes = [
+            "AI2024", 
+            "CHATBOT", 
+            "WELCOME123",
+            "OPENAI",
+            "DEEPSEEK"
+        ];
     }
 
     // 设置模型
@@ -321,5 +329,9 @@ class APIManager {
     // 获取指定 API 的可用模型列表
     getAvailableModelsForAPI(api) {
         return this.availableModels[api] || [];
+    }
+    // 添加邀请码验证方法
+    validateInvitationCode(code) {
+        return this.invitationCodes.includes(code.toUpperCase());
     }
 }

@@ -128,7 +128,19 @@
         </div>
     </div>
 
-
+    <!-- index.html 修改部分 -->
+    <!-- 在 </body> 标签前添加 -->
+    <div class="modal" id="invite-modal">
+        <div class="modal-content invite-modal-content">
+            <h3>请输入邀请码</h3>
+            <p class="invite-description">请输入有效的邀请码以使用本应用</p>
+            <input type="text" id="invite-code" class="invite-code-input" placeholder="输入邀请码">
+            <div class="modal-actions invite-actions">
+                <button id="submit-invite-btn" class="submit-invite-btn">提交</button>
+            </div>
+            <p id="invite-error" class="invite-error">邀请码无效，请重试</p>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="./js/api.js"></script>

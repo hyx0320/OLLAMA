@@ -21,6 +21,58 @@ class ChatApp {
         this.loadConversations();
         this.updateAvailableModels();
         this.checkDarkModePreference(); // 强制设置为白天模式
+
+        // 初始化邀请码相关元素
+        this.inviteModal = document.getElementById('invite-modal');
+        this.inviteCodeInput = document.getElementById('invite-code');
+        this.submitInviteBtn = document.getElementById('submit-invite-btn');
+        this.inviteError = document.getElementById('invite-error');
+
+        // 绑定邀请码验证事件
+        this.bindInviteEvents();
+        // 检查是否已通过验证
+        this.checkInvitation();
+    }
+    // 添加邀请码事件绑定方法
+    bindInviteEvents() {
+        this.submitInviteBtn.addEventListener('click', () => this.verifyInvitationCode());
+        this.inviteCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.verifyInvitationCode();
+            }
+        });
+    }
+
+    // 检查邀请码状态
+    checkInvitation() {
+        const isVerified = sessionStorage.getItem('inviteVerified') === 'true'; // 改用 sessionStorage
+        if (!isVerified) {
+            // 显示邀请码输入框
+            document.getElementById('invite-modal').classList.add('show');
+            document.querySelector('.app-container').style.display = 'none';
+        }
+    }
+
+    // 验证邀请码
+    verifyInvitationCode() {
+        const code = this.inviteCodeInput.value.trim();
+        if (!code) {
+            this.inviteError.textContent = '请输入邀请码';
+            this.inviteError.style.display = 'block';
+            return;
+        }
+
+        if (this.apiManager.validateInvitationCode(code)) {
+            // 验证通过，使用 sessionStorage 存储
+            sessionStorage.setItem('inviteVerified', 'true'); // 改用 sessionStorage
+            document.getElementById('invite-modal').classList.remove('show');
+            document.querySelector('.app-container').style.display = 'flex';
+            this.showToast('验证成功，欢迎使用！');
+        } else {
+            // 验证失败
+            this.inviteError.textContent = '邀请码无效，请重试';
+            this.inviteError.style.display = 'block';
+        }
     }
 
     /* ===================== */
@@ -56,10 +108,6 @@ class ChatApp {
         this.deepThinkingBtn = document.getElementById('deep-thinking-btn');
         this.deleteChatBtn = document.getElementById('delete-chat-btn');
         this.darkModeBtn = document.getElementById('dark-mode-btn');
-
-
-        //调试
-        console.log('darkModeBtn:', this.darkModeBtn);
         
         // 模态框相关元素
         this.renameModal = document.getElementById('rename-modal');
