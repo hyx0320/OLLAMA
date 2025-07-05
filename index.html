@@ -46,7 +46,9 @@
                     <!-- 历史对话列表 -->
                 </div>
             </div>
-            <div class="theme-customizer">
+            
+            <!-- 主题定制器区域 - 默认隐藏 -->
+            <div class="theme-customizer" style="display:none;">
                 <h3>主题颜色</h3>
                 <div class="color-picker-group">
                     <div class="color-picker">
@@ -69,8 +71,20 @@
                 <button id="apply-theme-btn" class="apply-theme-btn">应用主题</button>
                 <button id="reset-theme-btn" class="reset-theme-btn">重置默认</button>
             </div>
+            
             <div class="sidebar-footer">
-                <div class="api-config">
+                <!-- 主题切换按钮 - 使用与API按钮相同的样式 -->
+                <button class="api-toggle-btn" id="theme-toggle-btn">
+                    <span class="api-toggle-text">显示主题设置</span>
+                </button>
+                
+                <!-- API切换按钮 -->
+                <button class="api-toggle-btn" id="api-toggle-btn">
+                    <span class="api-toggle-text">显示API设置</span>
+                </button>
+                
+                <!-- API配置区域 - 默认隐藏 -->
+                <div class="api-config" style="display:none;">
                     <input type="text" id="api-key" placeholder="API Key (sk-...)">
                     <input type="text" id="api-url" placeholder="API URL (可选)">
                     <input type="text" id="ollama-url" placeholder="Ollama地址 (默认: http://localhost:11434)">
@@ -84,7 +98,7 @@
                 </div>
             </div>
         </div>
-
+        
         <!-- 主聊天区域 -->
         <div class="main-content">
             <div class="chat-header">
@@ -130,7 +144,7 @@
                     </div>
                 </div>
                 <div class="file-upload-hint" id="file-upload-hint"></div>
-                <input type="file" id="file-upload" style="display:none">
+                <input type="file" id="file-upload" style="display:none" multiple>
             </div>
         </div>
     </div>
@@ -146,8 +160,7 @@
         </div>
     </div>
 
-    <!-- index.html 修改部分 -->
-    <!-- 在 </body> 标签前添加 -->
+    <!-- 邀请码模态框 -->
     <div class="modal" id="invite-modal">
         <div class="modal-content">
             <h3>请输入邀请码</h3>
@@ -162,9 +175,14 @@
             </div>
         </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/app.js"></script>
+    
+    <script>
+        
+    </script>
 </body>
 </html>

@@ -1112,3 +1112,308 @@
 .reset-theme-btn:hover {
     background-color: var(--border-color);
 }
+
+/* 文件状态提示样式 */
+.file-status {
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.file-status.success {
+    background-color: #e6ffed;
+    color: #1a7f37;
+    border-left: 3px solid #2ea043;
+}
+
+.file-status.error {
+    background-color: #ffebe9;
+    color: #cf222e;
+    border-left: 3px solid #d1242f;
+}
+
+.file-status.processing {
+    background-color: #eef4ff;
+    color: #0969da;
+    border-left: 3px solid #218bff;
+}
+
+/* 移动端优化 - 添加到现有CSS文件的底部 */
+
+@media (max-width: 768px) {
+    /* 整体布局调整 */
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    /* 侧边栏优化 - 改为可滚动侧边栏 */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100%;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        border-right: none;
+        overflow-y: auto;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    /* 侧边栏切换按钮优化 */
+    .sidebar-toggle {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 101;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 20px;
+    }
+    
+    /* 主内容区域优化 */
+    .main-content {
+        margin-left: 0;
+        padding-top: 50px;
+        padding-bottom: 80px; /* 为输入区域留出空间 */
+    }
+    
+    /* 聊天消息区域优化 */
+    .chat-messages {
+        padding: 10px;
+    }
+    
+    .message {
+        margin-bottom: 12px;
+    }
+    
+    .message-content {
+        max-width: 90%;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    /* 输入区域优化 */
+    .chat-input-container {
+        padding: 10px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+    }
+    
+    #message-input {
+        min-height: 40px;
+        max-height: 100px;
+        font-size: 14px;
+    }
+    
+    /* 按钮优化 */
+    .button-group {
+        position: fixed;
+        bottom: 70px;
+        right: 10px;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    
+    .feature-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        justify-content: center;
+        padding: 0;
+    }
+    
+    .feature-btn span:last-child {
+        display: none;
+    }
+    
+    .send-btn {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    /* 聊天标题优化 */
+    .chat-title-container {
+        max-width: 70%;
+    }
+    
+    .chat-title {
+        font-size: 16px;
+    }
+    
+    /* API配置区域优化 - 改为可折叠面板 */
+    .api-config {
+        display: none; /* 默认隐藏 */
+        padding: 10px;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        margin-bottom: 10px;
+    }
+    
+    /* 添加API配置切换按钮 */
+    .api-toggle-btn {
+        display: block;
+        width: 100%;
+        padding: 8px;
+        background-color: var(--bg-secondary);
+        border: none;
+        border-radius: var(--radius-sm);
+        text-align: center;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+    
+    /* 主题定制器优化 */
+    .theme-customizer {
+        display: none; /* 移动端默认隐藏主题定制 */
+    }
+    
+    /* 模态框优化 */
+    .modal-content {
+        width: 90%;
+        max-width: 90%;
+    }
+    
+    /* 文件上传提示优化 */
+    .file-upload-hint {
+        position: fixed;
+        bottom: 120px;
+        left: 10px;
+        right: 10px;
+        background-color: var(--bg-color);
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+    }
+    
+    /* 思考过程优化 */
+    .thinking-process {
+        padding: 8px;
+        font-size: 13px;
+    }
+    
+    /* 邀请码模态框优化 */
+    #invite-modal .modal-content {
+        width: 90%;
+        max-width: 90%;
+        padding: 20px 15px;
+    }
+    
+    .tier-hint {
+        font-size: 12px;
+    }
+    
+    .tier-hint span {
+        display: block;
+        margin: 5px 0;
+    }
+    
+    .tier-hint span:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 5px;
+    }
+}
+
+/* 小屏幕手机优化 (小于400px) */
+@media (max-width: 400px) {
+    .message-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+    
+    .message-content {
+        max-width: 85%;
+        padding: 8px 10px;
+    }
+    
+    .chat-title {
+        font-size: 14px;
+    }
+    
+    #message-input {
+        font-size: 13px;
+    }
+    
+    .button-group {
+        bottom: 60px;
+    }
+    
+    .feature-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    /* API配置输入框优化 */
+    .api-config input {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+}
+/* API配置切换按钮优化 */
+.api-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.api-toggle-btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.api-toggle-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 添加图标箭头动画 */
+.api-toggle-btn::after {
+    content: "▼";
+    font-size: 12px;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+.api-toggle-btn.active::after {
+    transform: rotate(180deg);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .api-toggle-btn {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+    
+    .api-toggle-btn::after {
+        font-size: 10px;
+        margin-left: 6px;
+    }
+}
