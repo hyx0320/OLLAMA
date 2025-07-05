@@ -18,6 +18,8 @@ class APIManager {
         };
         // 存储当前用户等级
         this.userTier = null;
+        // 推荐资源缓存
+        this.resourceCache = new Map(); 
     }
 
     // 设置模型
@@ -339,5 +341,210 @@ class APIManager {
         }
         }
         return null;
+    }
+
+    // 实际获取推荐资源（使用各平台API）
+    async getRelatedResources(query) {
+        // 检查缓存
+        if (this.resourceCache.has(query)) {
+            return this.resourceCache.get(query);
+        }
+
+        try {
+            const resources = {
+                baike: await this.getBaiKeResources(query),
+                csdn: await this.getCSDNResources(query),
+                zhihu: await this.getZhihuResources(query)
+            };
+
+            // 过滤空结果
+            const filteredResources = {};
+            for (const [source, items] of Object.entries(resources)) {
+                if (items && items.length > 0) {
+                    filteredResources[source] = items;
+                }
+            }
+
+            // 存入缓存
+            if (Object.keys(filteredResources).length > 0) {
+                this.resourceCache.set(query, filteredResources);
+            }
+
+            return filteredResources;
+        } catch (error) {
+            console.error('获取推荐资源失败:', error);
+            return null;
+        }
+    }
+
+    // 获取秒懂百科资源
+    async getBaiKeResources(query) {
+        try {
+            // 实际API调用示例（需要替换为真实API）
+            const response = await fetch(`https://baike-api.example.com/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            return data.items
+                .filter(item => item.title.includes(query)) // 确保标题匹配
+                .slice(0, 2) // 最多2条
+                .map(item => ({
+                    title: item.title,
+                    url: item.url,
+                    source: "秒懂百科",
+                    verified: true, // 标记为已验证
+                    openInNewTab: true,  // 新增标志
+                    linkAttrs: {        // 新增属性对象
+                        target: "_blank",
+                        rel: "noopener noreferrer nofollow"
+                    }
+                }));
+        } catch (error) {
+            console.error('获取秒懂百科资源失败:', error);
+            return null;
+        }
+    }
+
+    // 获取CSDN资源
+    async getCSDNResources(query) {
+        try {
+            const response = await fetch(`https://csdn-api.example.com/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            return data.list
+                .filter(item => 
+                    item.title.includes(query) && 
+                    item.contentType === 'blog')
+                .slice(0, 1)
+                .map(item => ({
+                    title: item.title,
+                    url: item.url,
+                    source: "CSDN",
+                    verified: true,
+                    openInNewTab: true,  // 新增标志
+                    linkAttrs: {        // 新增属性对象
+                        target: "_blank",
+                        rel: "noopener noreferrer nofollow"
+                    }
+                }));
+        } catch (error) {
+            console.error('获取CSDN资源失败:', error);
+            return null;
+        }
+    }
+
+    // 获取知乎资源
+    async getZhihuResources(query) {
+        try {
+            const response = await fetch(`https://zhihu-api.example.com/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            return data.results
+                .filter(item => 
+                    item.type === 'question' &&
+                    item.title.includes(query))
+                .slice(0, 1)
+                .map(item => ({
+                    title: item.title,
+                    url: `https://www.zhihu.com/question/${item.id}`,
+                    source: "知乎",
+                    verified: true,
+                    openInNewTab: true,  // 新增标志
+                    linkAttrs: {        // 新增属性对象
+                        target: "_blank",
+                        rel: "noopener noreferrer nofollow"
+                    }
+                }));
+        } catch (error) {
+            console.error('获取知乎资源失败:', error);
+            return null;
+        }
+    }
+
+    // 语音合成方法
+    speakText(text, options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!('speechSynthesis' in window)) {
+                reject(new Error('您的浏览器不支持语音合成API'));
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 设置语音选项
+            utterance.rate = options.rate || 1; // 语速 (0.1-10)
+            utterance.pitch = options.pitch || 1; // 音高 (0-2)
+            utterance.volume = options.volume || 1; // 音量 (0-1)
+            
+            // 设置语音 (如果有)
+            if (options.voice) {
+                const voices = window.speechSynthesis.getVoices();
+                const selectedVoice = voices.find(v => v.name === options.voice);
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+            }
+
+            utterance.onend = () => resolve();
+            utterance.onerror = (event) => reject(event.error);
+
+            window.speechSynthesis.speak(utterance);
+        });
+    }
+
+    // 停止语音合成
+    stopSpeaking() {
+        window.speechSynthesis.cancel();
+    }
+
+    // 语音识别方法
+    startSpeechRecognition(options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                reject(new Error('您的浏览器不支持语音识别API'));
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            // 设置识别选项
+            recognition.continuous = options.continuous || false;
+            recognition.interimResults = options.interimResults || false;
+            recognition.lang = options.lang || 'zh-CN';
+            recognition.maxAlternatives = options.maxAlternatives || 1;
+
+            let finalTranscript = '';
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                if (options.onInterimResult) {
+                    options.onInterimResult(interimTranscript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                reject(event.error);
+            };
+
+            recognition.onend = () => {
+                if (finalTranscript) {
+                    resolve(finalTranscript);
+                } else {
+                    reject(new Error('没有识别到语音'));
+                }
+            };
+
+            recognition.start();
+        });
     }
 }

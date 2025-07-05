@@ -36,6 +36,22 @@ class ChatApp {
 
         // 检查授权状态
         this.checkAuthorization();
+
+        // 初始化时立即保护现有链接
+        this.secureAllExternalLinks();
+        
+        // 每30秒检查一次（防止动态内容）
+        setInterval(() => {
+            this.secureAllExternalLinks();
+        }, 30000);
+
+        // 语音控制相关状态
+        this.isSpeaking = false;
+        this.isListening = false;
+        this.currentSpeakingMessage = null;
+        
+        // 不需要initializeVoiceElements了，因为按钮已经在HTML中
+        this.bindVoiceEvents();
     }
 
     /* ===================== */
@@ -403,6 +419,13 @@ class ChatApp {
     bindModalEvents() {
         this.cancelRenameBtn.addEventListener('click', () => this.hideRenameModal());
         this.confirmRenameBtn.addEventListener('click', () => this.renameCurrentConversation());
+        
+        // 添加回车键支持
+        this.newChatTitleInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.renameCurrentConversation();
+            }
+        });
     }
 
     bindThemeToggleEvents() {
@@ -520,6 +543,10 @@ class ChatApp {
 
             this.updateMessage(loadingId, response);
             this.updateConversationHistory();
+            
+            // 添加推荐资源
+            await this.addRelatedResources(message, loadingId);
+            
         } catch (error) {
             console.error('发送消息失败:', error);
             let errorMsg = `❌ 错误: ${error.message}`;
@@ -536,6 +563,319 @@ class ChatApp {
             this.updateMessage(loadingId, errorMsg);
         }
     }
+
+    // 在APIManager类中确保返回的资源对象格式
+async getBaiKeResources(query) {
+    try {
+        // 模拟API调用 - 实际项目中替换为真实API
+        const mockData = {
+            items: [
+                {
+                    title: `${query} - 百科解释`,
+                    url: `https://baike.example.com/${encodeURIComponent(query)}`,
+                    verified: true
+                }
+            ]
+        };
+        
+        return mockData.items
+            .filter(item => item.title.includes(query))
+            .slice(0, 2)
+            .map(item => ({
+                title: item.title,
+                url: item.url,
+                source: "baike",
+                verified: item.verified,
+                openInNewTab: true,
+                linkAttrs: {
+                    target: "_blank",
+                    rel: "noopener noreferrer nofollow"
+                }
+            }));
+    } catch (error) {
+        console.error('获取百科资源失败:', error);
+        return null;
+    }
+}
+
+// 在ChatApp类中的相关方法
+async addRelatedResources(query, messageId) {
+    try {
+        const resources = await this.apiManager.getRelatedResources(query);
+        if (!resources || Object.keys(resources).length === 0) return;
+
+        const messageDiv = document.getElementById(messageId);
+        if (!messageDiv) return;
+
+        // 创建资源按钮容器
+        const resourcesBtnContainer = document.createElement('div');
+        resourcesBtnContainer.className = 'resources-btn-container';
+        
+        // 创建查看资源按钮
+        const resourcesBtn = document.createElement('button');
+        resourcesBtn.className = 'resources-btn';
+        resourcesBtn.innerHTML = '🔍 查看相关资源';
+        resourcesBtn.title = '在新窗口查看推荐资源';
+        
+        // 添加点击事件 - 使用更安全的方式
+        resourcesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showResourcesWindow(resources);
+        });
+        
+        // 添加到DOM
+        resourcesBtnContainer.appendChild(resourcesBtn);
+        messageDiv.querySelector('.message-content').appendChild(resourcesBtnContainer);
+        
+        // 确保按钮样式
+        this.applyResourcesButtonStyle();
+        
+    } catch (error) {
+        console.error('添加推荐资源失败:', error);
+    }
+}
+
+// 应用资源按钮样式
+applyResourcesButtonStyle() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .resources-btn-container {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+        .resources-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .resources-btn:hover {
+            background: var(--primary-hover);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// 安全地在新窗口显示资源
+showResourcesWindow(resources) {
+    // 尝试打开新窗口
+    let resourcesWindow;
+    try {
+        resourcesWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+        
+        if (!resourcesWindow || resourcesWindow.closed) {
+            throw new Error('窗口被阻止');
+        }
+        
+        // 设置安全属性
+        resourcesWindow.opener = null;
+        
+    } catch (error) {
+        this.showToast('弹出窗口被阻止，请在浏览器设置中允许弹出窗口');
+        return;
+    }
+
+    // 构建安全的HTML内容
+    const safeHTML = this.buildSafeResourcesHTML(resources);
+    
+    // 安全地写入内容
+    try {
+        resourcesWindow.document.open();
+        resourcesWindow.document.write(safeHTML);
+        resourcesWindow.document.close();
+    } catch (error) {
+        console.error('写入资源窗口失败:', error);
+        resourcesWindow.close();
+        this.showToast('打开资源窗口失败');
+    }
+}
+
+// 构建安全的HTML内容
+buildSafeResourcesHTML(resources) {
+    // 安全转义函数
+    const escapeHTML = (str) => {
+        return str.replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+    };
+
+    // 构建HTML
+    let htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相关资源推荐</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .resource-section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .resource-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #34495e;
+            margin: 15px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .resource-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .resource-item {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .resource-item:hover {
+            background-color: #f8f8f8;
+        }
+        .resource-link {
+            color: #3498db;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .resource-link:hover {
+            text-decoration: underline;
+        }
+        .external-icon {
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+        .security-notice {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔍 相关资源推荐</h2>
+        <p>以下是与您问题相关的高质量内容（所有链接将在新窗口打开）：</p>`;
+
+    // 添加资源内容（安全转义）
+    for (const [source, items] of Object.entries(resources)) {
+        if (!items || items.length === 0) continue;
+        
+        htmlContent += `
+        <div class="resource-section">
+            <div class="resource-title">
+                ${escapeHTML(this.getPlatformIcon(source))} ${escapeHTML(this.getPlatformName(source))}
+            </div>
+            <ul class="resource-list">`;
+        
+        items.forEach(item => {
+            if (!item.verified) return;
+            
+            htmlContent += `
+            <li class="resource-item">
+                <a href="${escapeHTML(item.url)}" class="resource-link" 
+                   target="_blank" rel="noopener noreferrer nofollow">
+                    ${escapeHTML(item.title)} <span class="external-icon">↗</span>
+                </a>
+            </li>`;
+        });
+        
+        htmlContent += `
+            </ul>
+        </div>`;
+    }
+    
+    // 添加安全声明
+    htmlContent += `
+        <div class="security-notice">
+            <strong>安全提示：</strong>所有外部链接均在新窗口打开，并添加了安全保护措施。
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    return htmlContent;
+}
+
+// 获取平台图标和名称（保持不变）
+getPlatformIcon(source) {
+    const icons = {
+        baike: '📚',
+        csdn: '💻',
+        zhihu: '📝'
+    };
+    return icons[source] || '🔗';
+}
+
+getPlatformName(source) {
+    const names = {
+        baike: '秒懂百科',
+        csdn: 'CSDN技术社区',
+        zhihu: '知乎讨论'
+    };
+    return names[source] || source;
+}
+
+// 保护所有外部链接（保持不变）
+secureAllExternalLinks() {
+    document.querySelectorAll('a[href^="http"]').forEach(link => {
+        if (link.getAttribute('data-external') === 'true') return;
+        if (link.href.startsWith(window.location.origin)) return;
+        
+        link.target = "_blank";
+        link.rel = "noopener noreferrer nofollow";
+        link.setAttribute('data-external', 'true');
+        
+        Object.defineProperty(link, 'target', {
+            value: '_blank',
+            writable: false
+        });
+        
+        if (!link.querySelector('.external-link-indicator')) {
+            const extIcon = document.createElement('span');
+            extIcon.className = 'external-link-indicator';
+            extIcon.textContent = ' ↗';
+            link.appendChild(extIcon);
+        }
+    });
+}
 
     addMessage(role, content, isLoading = false) {
         const messageId = `msg_${++this.messageIdCounter}`;
@@ -564,17 +904,25 @@ class ChatApp {
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'message-actions';
 
+        // 复制按钮
         const copyBtn = document.createElement('button');
-        copyBtn.className = 'message-action-btn';
+        copyBtn.className = 'message-action-btn copy-btn';
         copyBtn.innerHTML = '📋';
         copyBtn.title = '复制';
         copyBtn.addEventListener('click', () => this.copyToClipboard(messageContent.textContent));
 
+        // 朗读按钮
+        const speakBtn = document.createElement('button');
+        speakBtn.className = 'message-action-btn speak-btn';
+        speakBtn.innerHTML = '🔊';
+        speakBtn.title = '朗读';
+        
         actionsDiv.appendChild(copyBtn);
+        actionsDiv.appendChild(speakBtn);
 
         if (role === 'user') {
             const editBtn = document.createElement('button');
-            editBtn.className = 'message-action-btn';
+            editBtn.className = 'message-action-btn edit-btn';
             editBtn.innerHTML = '✏️';
             editBtn.title = '编辑';
             editBtn.addEventListener('click', () => this.editMessage(messageId));
@@ -671,79 +1019,72 @@ class ChatApp {
     /* === 文件处理相关方法 === */
     /* ===================== */
 
-    /**
- * 处理文件上传
- * @param {Event} e - 文件上传事件
- */
-async handleFileUpload(e) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    async handleFileUpload(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
 
-    this.fileUpload.value = ''; // 重置文件输入
+        this.fileUpload.value = ''; // 重置文件输入
 
-    for (const file of files) {
-        // 创建状态容器
-        const statusContainer = document.createElement('div');
-        
-        try {
-            // 1. 显示处理中状态
-            statusContainer.className = 'file-status processing';
-            statusContainer.textContent = `🔄 正在处理文件: ${file.name}...`;
-            this.fileUploadHint.innerHTML = '';
-            this.fileUploadHint.appendChild(statusContainer);
-            this.fileUploadHint.style.display = 'block';
-
-            // 2. 添加用户消息（显示文件信息）
-            this.addMessage('user', `📄 上传了文件: ${file.name} (${this.formatFileSize(file.size)})`);
-
-            // 3. 添加加载中的AI回复
-            const loadingId = this.addMessage('assistant', '', true);
-
-            // 4. 读取文件内容
-            const { content, status } = await this.readFileContent(file);
+        for (const file of files) {
+            // 创建状态容器
+            const statusContainer = document.createElement('div');
             
-            // 5. 更新状态提示
-            if (status === 'success') {
-                statusContainer.className = 'file-status success';
-                statusContainer.textContent = `✅ 成功读取文件: ${file.name}`;
-            } else {
+            try {
+                // 1. 显示处理中状态
+                statusContainer.className = 'file-status processing';
+                statusContainer.textContent = `🔄 正在处理文件: ${file.name}...`;
+                this.fileUploadHint.innerHTML = '';
+                this.fileUploadHint.appendChild(statusContainer);
+                this.fileUploadHint.style.display = 'block';
+
+                // 2. 添加用户消息（显示文件信息）
+                this.addMessage('user', `📄 上传了文件: ${file.name} (${this.formatFileSize(file.size)})`);
+
+                // 3. 添加加载中的AI回复
+                const loadingId = this.addMessage('assistant', '', true);
+
+                // 4. 读取文件内容
+                const { content, status } = await this.readFileContent(file);
+                
+                // 5. 更新状态提示
+                if (status === 'success') {
+                    statusContainer.className = 'file-status success';
+                    statusContainer.textContent = `✅ 成功读取文件: ${file.name}`;
+                } else {
+                    statusContainer.className = 'file-status error';
+                    statusContainer.textContent = `⚠️ 部分内容读取受限: ${file.name}`;
+                }
+
+                // 6. 构建明确的提示词
+                const prompt = this.buildFilePrompt(file, content, status);
+                
+                // 7. 发送给AI处理
+                const response = await this.apiManager.sendMessage(prompt);
+                
+                // 8. 更新AI回复
+                this.updateMessage(loadingId, response);
+                
+                // 9. 更新对话历史
+                this.updateConversationHistory();
+            } catch (error) {
+                console.error('文件处理错误:', error);
                 statusContainer.className = 'file-status error';
-                statusContainer.textContent = `⚠️ 部分内容读取受限: ${file.name}`;
+                statusContainer.textContent = `❌ 处理失败: ${file.name} (${error.message})`;
+                this.addMessage('assistant', `❌ 无法处理文件: ${error.message}`);
             }
-
-            // 6. 构建明确的提示词
-            const prompt = this.buildFilePrompt(file, content, status);
-            
-            // 7. 发送给AI处理
-            const response = await this.apiManager.sendMessage(prompt);
-            
-            // 8. 更新AI回复
-            this.updateMessage(loadingId, response);
-            
-            // 9. 更新对话历史
-            this.updateConversationHistory();
-        } catch (error) {
-            console.error('文件处理错误:', error);
-            statusContainer.className = 'file-status error';
-            statusContainer.textContent = `❌ 处理失败: ${file.name} (${error.message})`;
-            this.addMessage('assistant', `❌ 无法处理文件: ${error.message}`);
         }
     }
-}
 
-/**
- * 构建文件分析提示词
- */
-buildFilePrompt(file, content, status) {
-    let prompt = `你是一个文件分析助手。已收到用户上传的文件：
+    buildFilePrompt(file, content, status) {
+        let prompt = `你是一个文件分析助手。已收到用户上传的文件：
 文件名: ${file.name}
 文件大小: ${this.formatFileSize(file.size)}
 文件类型: ${file.type || '未知'}
 `;
 
-    if (status === 'success') {
-        prompt += `\n文件状态: ✅ 已成功读取完整内容\n\n`;
-        prompt += `### 请执行以下操作：
+        if (status === 'success') {
+            prompt += `\n文件状态: ✅ 已成功读取完整内容\n\n`;
+            prompt += `### 请执行以下操作：
 1. 确认文件类型和大小
 2. 总结文件主要内容
 3. 提取关键信息/数据
@@ -753,9 +1094,9 @@ buildFilePrompt(file, content, status) {
 \`\`\`
 ${content}
 \`\`\``;
-    } else {
-        prompt += `\n文件状态: ⚠️ 仅部分内容可用\n\n`;
-        prompt += `### 请基于可用内容：
+        } else {
+            prompt += `\n文件状态: ⚠️ 仅部分内容可用\n\n`;
+            prompt += `### 请基于可用内容：
 1. 说明文件类型限制
 2. 分析已有内容
 3. 建议如何获取完整分析
@@ -764,110 +1105,68 @@ ${content}
 \`\`\`
 ${content}
 \`\`\``;
+        }
+
+        return prompt;
     }
 
-    return prompt;
-}
+    async readFileContent(file) {
+        try {
+            // 1. 验证文件类型
+            if (!this.isValidFileType(file)) {
+                throw new Error('不支持的文件类型');
+            }
 
-/**
- * 读取文件内容（增强版）
- */
-async readFileContent(file) {
-    try {
-        // 1. 验证文件类型
-        if (!this.isValidFileType(file)) {
-            throw new Error('不支持的文件类型');
-        }
+            // 2. 验证文件大小 (10MB限制)
+            if (file.size > 10 * 1024 * 1024) {
+                throw new Error('文件大小超过10MB限制');
+            }
 
-        // 2. 验证文件大小 (10MB限制)
-        if (file.size > 10 * 1024 * 1024) {
-            throw new Error('文件大小超过10MB限制');
-        }
+            // 3. 读取内容
+            const content = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('读取文件失败'));
+                reader.readAsText(file);
+            });
 
-        // 3. 读取内容
-        const content = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = () => reject(new Error('读取文件失败'));
-            reader.readAsText(file);
-        });
+            // 4. 处理特殊文件类型
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                return {
+                    content: "[PDF文件内容]\n注意：当前版本无法直接解析PDF文本内容。\n建议：复制文本内容粘贴或转换为文本文件上传。",
+                    status: 'partial'
+                };
+            }
 
-        // 4. 处理特殊文件类型
-        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             return {
-                content: "[PDF文件内容]\n注意：当前版本无法直接解析PDF文本内容。\n建议：复制文本内容粘贴或转换为文本文件上传。",
-                status: 'partial'
+                content: content.substring(0, 20000), // 限制长度
+                status: 'success'
             };
+        } catch (error) {
+            console.error(`文件读取错误: ${file.name}`, error);
+            throw error;
         }
-
-        return {
-            content: content.substring(0, 20000), // 限制长度
-            status: 'success'
-        };
-    } catch (error) {
-        console.error(`文件读取错误: ${file.name}`, error);
-        throw error;
-    }
-}
-
-/**
- * 验证文件类型
- */
-isValidFileType(file) {
-    const allowedTypes = [
-        'text/plain', 'text/markdown', 'application/json',
-        'text/csv', 'application/pdf'
-    ];
-    
-    const allowedExtensions = ['.txt', '.md', '.json', '.csv', '.pdf'];
-    const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    
-    return allowedTypes.includes(file.type) || 
-           allowedExtensions.includes(extension);
-}
-
-    /**
-     * 处理文件内容
-     */
-    processFileContent(file, content) {
-        const extension = file.name.split('.').pop().toLowerCase();
-        
-        // 简单处理Office文件 - 实际项目应该使用专业库
-        if (['docx', 'xlsx', 'pptx'].includes(extension)) {
-            return `[${extension.toUpperCase()}文件内容提取]\n` +
-                '由于技术限制，无法直接解析Office文件内容。\n' +
-                '建议将内容复制为文本后上传。';
-        }
-        
-        // 处理PDF文件
-        if (file.type === 'application/pdf' || extension === '.pdf') {
-            return content; // 实际应该返回提取的文本
-        }
-        
-        // 其他文本文件直接返回
-        return content;
     }
 
-    /**
-     * 读取PDF内容 (简化版)
-     */
-    readPDFContent(file, reader, resolve, reject) {
-        // 实际项目应该使用PDF.js等库提取文本
-        // 这里简化处理，只返回基本信息
-        reader.readAsDataURL(file);
-        resolve(`[PDF文件 - ${file.name}]\n` +
-            '由于技术限制，无法直接解析PDF内容。\n' +
-            '建议将内容复制为文本后上传。');
+    isValidFileType(file) {
+        const allowedTypes = [
+            'text/plain', 'text/markdown', 'application/json',
+            'text/csv', 'application/pdf'
+        ];
+        
+        const allowedExtensions = ['.txt', '.md', '.json', '.csv', '.pdf'];
+        const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        
+        return allowedTypes.includes(file.type) || 
+               allowedExtensions.includes(extension);
     }
 
-    /**
-     * 格式化文件大小
-     */
     formatFileSize(bytes) {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
+
 
     /* ===================== */
     /* === 对话管理相关方法 === */
@@ -899,52 +1198,64 @@ isValidFileType(file) {
      * @param {boolean} autoSave - 是否为自动保存
      */
     saveCurrentConversation(title = '', autoSave = false) {
-        const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
-            return {
-                role: msg.classList.contains('user-message') ? 'user' : 'assistant',
-                content: msg.querySelector('.message-content').textContent,
-                timestamp: msg.querySelector('.message-time').textContent
-            };
-        });
+        try{
+            const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
+                return {
+                    role: msg.classList.contains('user-message') ? 'user' : 'assistant',
+                    content: msg.querySelector('.message-content').textContent,
+                    timestamp: msg.querySelector('.message-time').textContent
+                };
+            });
 
-        if (messages.length === 0) {
-            if (!autoSave) {
-                this.showToast('没有可保存的消息');
+            if (messages.length === 0) {
+                if (!autoSave) {
+                    this.showToast('没有可保存的消息');
+                }
+                return;
             }
-            return;
+
+            // 如果没有提供标题，使用第一条消息的前 20 个字符
+            if (!title && messages.length > 0) {
+                title = messages[0].content.substring(0, 20);
+                if (messages[0].content.length > 20) title += '...';
+            }
+
+            // 如果是自动保存且没有标题，使用默认标题
+            if (autoSave && !title) {
+                title = `对话 ${new Date().toLocaleDateString()}`;
+            }
+
+            const conversation = {
+                id: this.currentConversationId || Date.now().toString(),
+                title,
+                timestamp: new Date().toISOString(),
+                messages
+            };
+
+            const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+            const existingIndex = conversations.findIndex(c => c.id === conversation.id);
+
+            if (existingIndex !== -1) {
+                conversations[existingIndex] = conversation;
+            } else {
+                conversations.push(conversation);
+            }
+
+            localStorage.setItem('conversations', JSON.stringify(conversations));
+            this.loadConversations();
+            this.currentConversationId = conversation.id;
+            this.chatTitle.textContent = conversation.title;
+            // 添加存储后验证
+            const stored = JSON.parse(localStorage.getItem('conversations'));
+            if (!stored || !stored.some(c => c.id === conversation.id)) {
+                throw new Error('存储验证失败');
+            }
+        }catch (error) {
+            console.error('保存对话失败:', error);
+            if (!autoSave) {
+                this.showToast('保存失败，请检查存储空间');
+            }
         }
-
-        // 如果没有提供标题，使用第一条消息的前 20 个字符
-        if (!title && messages.length > 0) {
-            title = messages[0].content.substring(0, 20);
-            if (messages[0].content.length > 20) title += '...';
-        }
-
-        // 如果是自动保存且没有标题，使用默认标题
-        if (autoSave && !title) {
-            title = `对话 ${new Date().toLocaleDateString()}`;
-        }
-
-        const conversation = {
-            id: this.currentConversationId || Date.now().toString(),
-            title,
-            timestamp: new Date().toISOString(),
-            messages
-        };
-
-        const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-        const existingIndex = conversations.findIndex(c => c.id === conversation.id);
-
-        if (existingIndex !== -1) {
-            conversations[existingIndex] = conversation;
-        } else {
-            conversations.push(conversation);
-        }
-
-        localStorage.setItem('conversations', JSON.stringify(conversations));
-        this.loadConversations();
-        this.currentConversationId = conversation.id;
-        this.chatTitle.textContent = conversation.title;
     }
 
     /**
@@ -1067,16 +1378,25 @@ isValidFileType(file) {
      * 显示重命名模态框
      */
     showRenameModal() {
-        if (!this.currentConversationId) {
-            this.showToast('请先创建一个对话');
+        if (!this.currentConversationId && this.chatMessages.children.length === 0) {
+            this.showToast('请先开始对话');
             return;
         }
 
-        // 设置重命名输入框的值为当前对话标题
-        this.newChatTitleInput.value = this.chatTitle.textContent;
-        // 显示重命名模态框
+        // 设置默认值为当前标题或第一条消息
+        let defaultTitle = this.chatTitle.textContent;
+        if (defaultTitle === '新对话' && this.chatMessages.children.length > 0) {
+            const firstMsg = this.chatMessages.querySelector('.message');
+            if (firstMsg) {
+                defaultTitle = firstMsg.querySelector('.message-content').textContent;
+                defaultTitle = defaultTitle.length > 20 
+                    ? defaultTitle.substring(0, 20) + '...' 
+                    : defaultTitle;
+            }
+        }
+        
+        this.newChatTitleInput.value = defaultTitle;
         this.renameModal.style.display = 'flex';
-        // 重命名输入框获取焦点
         this.newChatTitleInput.focus();
     }
 
@@ -1090,6 +1410,7 @@ isValidFileType(file) {
     /**
      * 重命名当前对话
      */
+    // 修复后的重命名当前对话方法
     renameCurrentConversation() {
         const newTitle = this.newChatTitleInput.value.trim();
         if (!newTitle) {
@@ -1097,15 +1418,49 @@ isValidFileType(file) {
             return;
         }
 
-        const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-        const index = conversations.findIndex(c => c.id === this.currentConversationId);
+        // 确保有当前对话ID
+        if (!this.currentConversationId) {
+            this.currentConversationId = Date.now().toString();
+        }
 
+        // 获取所有对话
+        let conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+        
+        // 查找当前对话
+        const index = conversations.findIndex(c => c.id === this.currentConversationId);
+        
         if (index !== -1) {
+            // 更新现有对话
             conversations[index].title = newTitle;
+            conversations[index].timestamp = new Date().toISOString(); // 更新时间戳
+        } else {
+            // 创建新对话条目
+            const messages = Array.from(this.chatMessages.querySelectorAll('.message')).map(msg => {
+                return {
+                    role: msg.classList.contains('user-message') ? 'user' : 'assistant',
+                    content: msg.querySelector('.message-content').textContent,
+                    timestamp: msg.querySelector('.message-time').textContent
+                };
+            });
+            
+            conversations.push({
+                id: this.currentConversationId,
+                title: newTitle,
+                timestamp: new Date().toISOString(),
+                messages
+            });
+        }
+
+        // 保存到本地存储
+        try {
             localStorage.setItem('conversations', JSON.stringify(conversations));
             this.chatTitle.textContent = newTitle;
             this.loadConversations();
             this.hideRenameModal();
+            this.showToast('对话已重命名');
+        } catch (error) {
+            console.error('保存对话失败:', error);
+            this.showToast('保存失败，请检查存储空间');
         }
     }
 
@@ -1193,6 +1548,150 @@ isValidFileType(file) {
         URL.revokeObjectURL(url);
     }
 
+    // 初始化语音控制元素
+    initializeVoiceElements() {
+        // 语音控制容器
+        this.voiceControls = document.createElement('div');
+        this.voiceControls.className = 'voice-controls';
+        
+        // 朗读按钮
+        this.speakBtn = document.createElement('button');
+        this.speakBtn.className = 'voice-btn';
+        this.speakBtn.innerHTML = '🔊 朗读';
+        this.speakBtn.title = '朗读当前对话';
+        
+        // 语音输入按钮
+        this.listenBtn = document.createElement('button');
+        this.listenBtn.className = 'voice-btn';
+        this.listenBtn.innerHTML = '🎤 语音输入';
+        this.listenBtn.title = '使用语音输入';
+        
+        // 添加到输入区域
+        this.voiceControls.appendChild(this.speakBtn);
+        this.voiceControls.appendChild(this.listenBtn);
+        document.querySelector('.chat-input-container').prepend(this.voiceControls);
+        
+        // 语音状态指示器
+        this.voiceStatus = document.createElement('div');
+        this.voiceStatus.className = 'voice-status';
+        document.querySelector('.chat-header').appendChild(this.voiceStatus);
+    }
+
+    // 绑定语音事件
+    bindVoiceEvents() {
+        // 绑定所有朗读按钮
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.speak-btn')) {
+                const messageDiv = e.target.closest('.message');
+                this.toggleSpeakingMessage(messageDiv);
+            }
+        });
+        
+        // 绑定语音输入按钮
+        this.voiceInputBtn = document.getElementById('voice-input-btn');
+        this.voiceInputBtn.addEventListener('click', () => this.toggleListening());
+    }
+
+    // 切换单条消息的朗读状态
+    async toggleSpeakingMessage(messageDiv) {
+        if (this.currentSpeakingMessage === messageDiv) {
+            this.stopSpeaking();
+            this.currentSpeakingMessage = null;
+            return;
+        }
+        
+        if (this.currentSpeakingMessage) {
+            this.stopSpeaking();
+        }
+        
+        try {
+            this.currentSpeakingMessage = messageDiv;
+            const speakBtn = messageDiv.querySelector('.speak-btn');
+            speakBtn.textContent = '⏹️';
+            
+            const content = messageDiv.querySelector('.message-content').textContent;
+            const role = messageDiv.classList.contains('user-message') ? '用户说：' : '助手回答：';
+            
+            await this.apiManager.speakText(role + content, {
+                rate: 1,
+                pitch: 1,
+                voice: this.getPreferredVoice()
+            });
+        } catch (error) {
+            console.error('朗读失败:', error);
+            this.showToast(`朗读失败: ${error.message}`);
+        } finally {
+            if (this.currentSpeakingMessage === messageDiv) {
+                const speakBtn = messageDiv.querySelector('.speak-btn');
+                speakBtn.textContent = '🔊';
+                this.currentSpeakingMessage = null;
+            }
+        }
+    }
+
+    // 停止朗读
+    stopSpeaking() {
+        this.apiManager.stopSpeaking();
+        if (this.currentSpeakingMessage) {
+            const speakBtn = this.currentSpeakingMessage.querySelector('.speak-btn');
+            if (speakBtn) speakBtn.textContent = '🔊';
+            this.currentSpeakingMessage = null;
+        }
+    }
+
+    // 切换语音输入状态
+    async toggleListening() {
+        if (this.isListening) {
+            this.stopListening();
+            this.voiceInputBtn.innerHTML = '<span>🎤</span>';
+            this.voiceInputBtn.classList.remove('active');
+        } else {
+            try {
+                this.isListening = true;
+                this.voiceInputBtn.innerHTML = '<span>🔴</span>';
+                this.voiceInputBtn.classList.add('active');
+                
+                const transcript = await this.apiManager.startSpeechRecognition({
+                    lang: 'zh-CN',
+                    onInterimResult: (interim) => {
+                        this.messageInput.placeholder = interim || '正在聆听...';
+                    }
+                });
+                
+                this.messageInput.value = transcript;
+                this.messageInput.placeholder = '输入消息...按Enter发送，Shift+Enter换行';
+            } catch (error) {
+                console.error('语音识别失败:', error);
+                this.showToast(`语音识别失败: ${error.message}`);
+                this.messageInput.placeholder = '输入消息...按Enter发送，Shift+Enter换行';
+            } finally {
+                this.isListening = false;
+                this.voiceInputBtn.innerHTML = '<span>🎤</span>';
+                this.voiceInputBtn.classList.remove('active');
+            }
+        }
+    }
+
+    // 停止语音输入
+    stopListening() {
+        // 浏览器API会自动停止，这里主要是更新状态
+        this.isListening = false;
+        this.voiceStatus.textContent = '';
+    }
+
+    // 获取首选语音
+    getPreferredVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        // 优先选择中文语音
+        const chineseVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
+        return chineseVoice ? chineseVoice.name : null;
+    }
+
+    // 更新语音选项
+    updateVoiceOptions() {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('可用语音:', voices);
+    }
     /* ===================== */
     /* === 配置管理相关方法 === */
     /* ===================== */
@@ -1284,5 +1783,6 @@ window.onload = function() {
     // 由于在 ChatApp 构造函数中已经调用了 bindEvents 方法，这里的 bindMessageEvents 可以移除
     // app.bindMessageEvents(); 
     app.loadSettings();
+    app.secureExternalLinks();  // 添加这行
     // 其他初始化代码
 };

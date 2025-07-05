@@ -132,6 +132,9 @@
                 <div class="input-area">
                     <textarea id="message-input" placeholder="输入消息...按Enter发送，Shift+Enter换行" rows="3"></textarea>
                     <div class="button-group">
+                        <button id="voice-input-btn" class="feature-btn voice-input-btn" title="语音输入">
+                            <span>🎤</span>
+                        </button>
                         <button id="deep-thinking-btn" class="feature-btn deep-thinking-btn">
                             <span>💭</span>
                             <span>深度思考</span>
@@ -181,8 +184,81 @@
     <script src="./js/api.js"></script>
     <script src="./js/app.js"></script>
     
+    <style>
+        /* 消息操作按钮样式 */
+        .message-actions {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+
+        .message-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #666;
+        }
+
+        .message-action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+
+        /* 语音输入按钮样式 */
+        .voice-input-btn {
+            background: #f5f5f5;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .voice-input-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .voice-input-btn.active {
+            background: #ffebee;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* 调整按钮组布局 */
+        .button-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+    </style>
+    
     <script>
-        
+        // 确保DOM加载完成后初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化语音合成API的语音列表
+            if ('speechSynthesis' in window) {
+                speechSynthesis.onvoiceschanged = function() {
+                    console.log('语音列表已更新');
+                };
+            }
+        });
     </script>
 </body>
 </html>
