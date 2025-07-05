@@ -135,7 +135,8 @@ class APIManager {
             model: this.getAvailableModel('qwen'),  // 获取可用模型
             messages: [{ role: 'user', content: message }],
             max_tokens: 5000,  // 最大生成token数
-            temperature: 0.7   // 生成温度
+            temperature: 0.7,   // 生成温度
+            enable_thinking: false // 添加这个参数
         };
 
         // 如果启用联网搜索，添加搜索插件配置

@@ -133,7 +133,10 @@ class ChatApp {
      * 初始化邀请码系统
      */
     initializeInviteSystem() {
-        this.checkAuthorization(); // 检查用户授权状态
+        // 确保在DOM加载后检查授权
+        setTimeout(() => {
+            this.checkAuthorization(); // 检查用户授权状态
+        }, 100);
     }
 
     /**
@@ -431,7 +434,7 @@ class ChatApp {
      * 显示邀请码模态框
      */
     showInviteModal() {
-        this.inviteModal.classList.add('show');
+        this.inviteModal.style.display = 'flex'; // 确保模态框显示
         document.querySelector('.app-container').style.display = 'none';
         this.inviteCodeInput.focus();
     }
@@ -440,7 +443,7 @@ class ChatApp {
      * 隐藏邀请码模态框
      */
     hideInviteModal() {
-        this.inviteModal.classList.remove('show');
+        this.inviteModal.style.display = 'none';
         document.querySelector('.app-container').style.display = 'flex';
         this.inviteCodeInput.value = '';
     }
@@ -720,6 +723,10 @@ class ChatApp {
                     errorMsg += '4. Ollama服务是否已启动\n';
                 }
                 errorMsg += `\n详细错误: ${error.message}`;
+            }
+            // 添加对通义千问特定错误的处理
+            if (error.message.includes('enable_thinking')) {
+                errorMsg = '❌ 通义千问API参数错误: 请更新应用版本';
             }
             this.updateMessage(loadingId, errorMsg); // 显示错误消息
         }

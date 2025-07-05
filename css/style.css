@@ -803,6 +803,10 @@ body {
         border-radius: var(--radius-sm);
         box-shadow: var(--shadow);
     }
+
+    .clear-settings-btn span:last-child {
+        display: inline !important; /* 始终显示文本 */
+    }
     
     /* 移动端按钮修复 */
     .new-chat-btn {
